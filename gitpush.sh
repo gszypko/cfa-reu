@@ -8,6 +8,6 @@ if ( "$1" == "" ) then
 else
         set message = "$1"
 endif
-git add .
+git add --all .
 git commit -m "$message"
 git push
