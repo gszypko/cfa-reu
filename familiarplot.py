@@ -6,8 +6,8 @@ from matplotlib import pyplot as plt
 import datetime
 from scipy.optimize import curve_fit
 
-#datapath = '/data/reu/gszypko/spp_swp_spc_l2_20180830_v17.cdf'
-datapath = '/data/reu/gszypko/spp_swp_spc_l2_20181023_v11.cdf'
+#datapath = '/data/reu/gszypko/data/l2/spp_swp_spc_l2_20180830_v17.cdf'
+datapath = '/data/reu/gszypko/data/l2/spp_swp_spc_l2_20181023_v11.cdf'
 dat = cdflib.CDF(datapath)
 
 timeslc = 250
@@ -71,7 +71,7 @@ for i in range(300): foo=ax.scatter([epoch[i]]*len(mvmid[i]), mvmid[i], c=flux[i
 ax.set_yscale('log')
 ax.set_xlim((epoch[0],epoch[300]))
 
-l3filename = '/data/reu/gszypko/spp_swp_spc_l3i_20181023_v05.cdf'
+l3filename = '/data/reu/gszypko/data/l3/spp_swp_spc_l3i_20181023_v05.cdf'
 l3dat = cdflib.CDF(l3filename)
 
 l3epoch = l3dat.varget('Epoch')
