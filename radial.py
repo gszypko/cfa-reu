@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
+#radial.py
+#Plots different measurements from PSP along its first close approach
+#to the sun (Oct/Nov 2018) in the corotating heliocentric frame
 
 import cdflib
 import numpy as np
+import matplotlib
 from matplotlib import pyplot as plt
 #import datetime
 from os import listdir
 #from scipy.optimize import curve_fit
+import psplib
 
-#temp=temperature, vr=radial vel, np=density, b=magnetic field, beta=plasma beta
-colormode = 'beta'
+#temp=temperature, vr=radial vel, np=density, b=magnetic field
+#beta=plasma beta, alf=alfven speed, alfmach=alfven machn number
+colormode = 'b'
 
 au_km = 1.496e8
 
@@ -17,61 +23,37 @@ k_b = 1.38064852e-23 #boltzmann constant in m^2 kg s^-2 K^-1
 mu_0 = 4e-7*np.pi #vacuum permeability in T m / A
 
 path = '/data/reu/gszypko/data/loopback/'
+mag_path = '/data/reu/gszypko/data/mag/'
 file_names = sorted(listdir(path))
-
-if colormode == 'b':
-    mag_path = '/data/reu/gszypko/data/mag/'
-    mag_file_names = sorted(listdir(mag_path))
+mag_files = sorted(listdir(mag_path))
 
 fig = plt.figure(figsize=(12,9))
 ax = fig.add_subplot(111,projection='polar')
 
 for i in range(0,len(file_names)):
-    dat = cdflib.CDF(path + file_names[i])
-    carrlon = dat.varget('carr_longitude')
-    carrlat = dat.varget('carr_latitude')
-    scpos = dat.varget('sc_pos_HCI')
+    file_name = path + file_names[i]
+    carrlon, carrlat, scpos = psplib.unpack_vars(file_name, ['carr_longitude','carr_latitude','sc_pos_HCI'])
+    dist = psplib.compute_magnitudes(scpos/au_km, True)
+#     print(file_names[i])
+#     print("r="+str(round(np.amin(dist),2))+" to "+str(round(np.amax(dist),2)))
+#     print("theta="+str(round(np.amin(carrlon)+360,1))+" to "+str(round(np.amax(carrlon)+360,1))+'\n')
+#     continue
+    if colormode in {'vr','alfmach'}:
+        vp = psplib.unpack_vars(file_name, ['vp_moment_RTN'])[0]
+    if colormode in {'np','beta','alf','alfmach'}:
+        n_p = psplib.unpack_vars(file_name, ['np_moment'])[0]
+    if colormode in {'temp','beta','alf','alfmach'}:
+        wp = psplib.unpack_vars(file_name, ['wp_moment'])[0]
+    if colormode in {'b','beta','alf','alfmach'}:
+        epoch = psplib.unpack_vars(file_name, ['epoch'])[0]
+        mag_file = mag_path + mag_files[i]
+        b_rtn, epoch_b = psplib.unpack_vars(mag_file, ['psp_fld_mag_rtn','psp_fld_mag_epoch'])
+        b_mag = psplib.compute_magnitudes(b_rtn)
+        b_lerp = psplib.time_lerp(epoch,epoch_b,b_mag)
     
-    if colormode == 'vr':
-        vp = dat.varget('vp_moment_RTN')
-    elif colormode == 'np' or colormode == 'beta':
-        n_p = dat.varget('np_moment')
-    elif colormode == 'temp' or colormode == 'beta':
-        wp = dat.varget('wp_moment')
-        
-    if colormode == 'b' or colormode == 'beta':
-        epoch = dat.varget('epoch')
-        dat_b = cdflib.CDF(mag_path + mag_file_names[i])
-        b_rtn = dat_b.varget('psp_fld_mag_rtn')
-        epoch_b = dat_b.varget('psp_fld_mag_epoch')
-        b_r = b_rtn[:,0]
-        b_t = b_rtn[:,1]
-        b_n = b_rtn[:,2]
-        b_mag = np.sqrt(b_r**2 + b_t**2 + b_n**2)
-    
-        b_lerp = []
-    
-        for i in range(0,len(epoch)):
-            idx = np.searchsorted(epoch_b,epoch[i],side='right')
-            if epoch[i]==epoch_b[idx-1]:
-                b_lerp.append(b_mag[idx-1])
-            elif idx == 0 or idx == len(epoch_b):
-                b_lerp.append(-1e31)
-            else: #linear interpolation case
-                delta1 = epoch[i]-epoch_b[idx-1]
-                delta2 = epoch_b[idx]-epoch[i]
-                delta = epoch_b[idx]-epoch_b[idx-1]
-                b_lerp.append((delta1/delta*b_mag[idx-1] + delta2/delta*b_mag[idx]))
-    
-        b_lerp = np.array(b_lerp)
-    
-    xloc = scpos[:,0]/au_km
-    yloc = scpos[:,1]/au_km
-    #zloc = scpos[:,2]/au_km
-    zloc = 0 #projecting all positions down into the solar equatorial plane
-    dist = np.sqrt(xloc**2 + yloc**2 + zloc**2)
+#     dist = psplib.compute_magnitudes(scpos/au_km, True)
 
-    n=50 #step between good data points to plot
+    n=100 #step between good data points to plot
     if colormode == 'temp':
         temp = np.square(wp)*(mp_kg/(k_b*1e-6)/3)
         good = np.where(abs(wp) < 1e20)
@@ -87,9 +69,19 @@ for i in range(0,len(file_names)):
         good = np.where(abs(b_lerp) < 1e12)
         color = b_lerp[good][::n]
     elif colormode == 'beta':
-        beta = n_p * k_b * temp * 2 * mu_0 / np.square(b_lerp)
-        good = np.where(abs(beta) < 1e12)
+        temp = np.square(wp)*(mp_kg/(k_b*1e-6)/3)
+        beta = (n_p*1e6) * k_b * temp * 2 * mu_0 / np.square(b_lerp*1e-9)
+        good = np.where(abs(beta) < 1e10)
         color = beta[good][::n]
+    elif colormode == 'alf':
+        alf = b_lerp*1e-9/np.sqrt(mp_kg*(n_p*1e6)*mu_0) * 1e-3 #in km/s
+        good = np.where(abs(alf) < 1e12)
+        color = alf[good][::n]
+    elif colormode == 'alfmach':
+        alf = b_lerp*1e-9/np.sqrt(mp_kg*(n_p*1e6)*mu_0) * 1e-3 #in km/s
+        alfmach = vp[:,0]/alf
+        good = np.where(abs(alfmach) < 1e12)
+        color = alfmach[good][::n]
     else:
         good = np.where(True)
 
@@ -98,6 +90,8 @@ for i in range(0,len(file_names)):
 
     size = carrlat[good][::n]*30 + 150
 
+#Uncomment for logarithmic color scaling
+#     plt.scatter(theta,radius,cmap='jet',c=color,s=300,norm=matplotlib.colors.LogNorm())
     plt.scatter(theta,radius,cmap='jet',c=color,s=300)
 
 ax.set_rmax(0.4)
@@ -121,5 +115,12 @@ elif colormode == 'b':
 elif colormode == 'beta':
     ax.set_title("Plasma beta in heliocentric corotating frame")
     color_bar.set_label("Plasma beta")
+elif colormode == 'alf':
+    ax.set_title("Alfven speed in heliocentric corotating frame")
+    color_bar.set_label("Alfven speed (km/s)")
+elif colormode == 'alfmach':
+    ax.set_title("Alfven Mach number in heliocentric corotating frame")
+    color_bar.set_label("Alfven Mach number")
+
 
 plt.show()
