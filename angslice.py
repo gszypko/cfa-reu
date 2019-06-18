@@ -14,6 +14,29 @@ import psplib
 #beta=plasma beta, alf=alfven speed
 colormode = 'vr'
 
+if colormode == 'temp':
+    plot_title = 'Proton temperature '
+    y_label = 'Proton temperature (K)'
+elif colormode == 'vr':
+    plot_title = 'Radial proton velocity '
+    y_label = 'Proton velocity (km/s)'
+elif colormode == 'np':
+    plot_title = 'Proton density '
+    y_label = 'Proton density (cm^-3)'
+elif colormode == 'b':
+    plot_title = 'Magnetic field strength '
+    y_label = 'Field strength (nT)'
+elif colormode == 'beta':
+    plot_title = 'Plasma beta '
+    y_label = 'Plasma beta'
+elif colormode == 'alf':
+    plot_title = 'Alfven speed '
+    y_label = 'Alfven speed (km/s)'
+elif colormode == 'alfmach':
+    plot_title = 'Alfven Mach number '
+    y_label = 'Alfven Mach number'
+
+
 au_km = 1.496e8
 
 mp_kg = 1.6726219e-27 #proton mass in kg
@@ -44,9 +67,9 @@ if colormode in {'b','beta','alf','alfmach'}:
 for angle in range(ang_start,ang_end,ang_res):
     fig = plt.figure(figsize=(12,9))
     ax = fig.add_subplot(111)
-    ax.set_title('Radial Proton Velocity (Carrington Longitude = '+str(angle)+' to '+str(angle+ang_res)+' deg)')
+    ax.set_title(plot_title+', Carrington Longitude = '+str(angle)+' to '+str(angle+ang_res)+' deg')
     ax.set_xlabel('Radial distance (AU)')
-    ax.set_ylabel('Radial proton speed (km/s)')
+    ax.set_ylabel(y_label)
     ang_slice = np.where(np.logical_and(np.logical_and(np.greater(carrlon,angle),np.less(carrlon,angle+ang_res)),np.less(abs(v_r),1e12)))
     ax.scatter(dist[ang_slice],v_r[ang_slice],marker='.',s=1)
 
