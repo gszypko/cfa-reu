@@ -41,6 +41,7 @@ def time_lerp(epoch, epoch_b, b_mag):
     "From values in b_mag at times epoch_b, creates interpolated arrays of values at times epoch"
     b_lerp = []
     for i in range(0,len(epoch)):
+#         print(str(i)+' of '+str(len(epoch)))
         idx = np.searchsorted(epoch_b,epoch[i],side='right')
         if epoch[i]==epoch_b[idx-1]:
             b_lerp.append(b_mag[idx-1])

@@ -14,7 +14,7 @@ import psplib
 
 #temp=temperature, vr=radial vel, np=density, b=magnetic field
 #beta=plasma beta, alf=alfven speed, alfmach=alfven machn number
-colormode = 'b'
+colormode = 'br'
 
 au_km = 1.496e8
 
@@ -44,7 +44,7 @@ for i in range(0,len(file_names)):
         n_p = psplib.unpack_vars(file_name, ['np_moment'])[0]
     if colormode in {'temp','beta','alf','alfmach'}:
         wp = psplib.unpack_vars(file_name, ['wp_moment'])[0]
-    if colormode in {'b','beta','alf','alfmach'}:
+    if colormode in {'b','beta','alf','alfmach','br'}:
         epoch = psplib.unpack_vars(file_name, ['epoch'])[0]
         mag_file = mag_path + mag_files[i]
         b_rtn, epoch_b = psplib.unpack_vars(mag_file, ['psp_fld_mag_rtn','psp_fld_mag_epoch'])
@@ -53,7 +53,7 @@ for i in range(0,len(file_names)):
     
 #     dist = psplib.compute_magnitudes(scpos/au_km, True)
 
-    n=100 #step between good data points to plot
+    n=1 #step between good data points to plot
     if colormode == 'temp':
         temp = np.square(wp)*(mp_kg/(k_b*1e-6)/3)
         good = np.where(abs(wp) < 1e20)
@@ -82,6 +82,10 @@ for i in range(0,len(file_names)):
         alfmach = vp[:,0]/alf
         good = np.where(abs(alfmach) < 1e12)
         color = alfmach[good][::n]
+    elif colormode == 'br':
+        b_r_lerp = psplib.time_lerp(epoch,epoch_b,b_rtn[:,0])
+        good = np.where(abs(b_r_lerp)<1e12)
+        color = b_r_lerp[good][::n]
     else:
         good = np.where(True)
 
@@ -92,7 +96,7 @@ for i in range(0,len(file_names)):
 
 #Uncomment for logarithmic color scaling
 #     plt.scatter(theta,radius,cmap='jet',c=color,s=300,norm=matplotlib.colors.LogNorm())
-    plt.scatter(theta,radius,cmap='jet',c=color,s=300)
+    plt.scatter(theta,radius,cmap='jet',c=color,s=300,vmin=-20,vmax=20)
 
 ax.set_rmax(0.4)
 ax.set_thetamin(270)
@@ -113,6 +117,7 @@ elif colormode == 'b':
     ax.set_title("Magnetic field strength (interpolated) in heliocentric corotating frame")
     color_bar.set_label('Magnetic field magnitude (nT)')
 elif colormode == 'beta':
+    ax.set_yscale('log')
     ax.set_title("Plasma beta in heliocentric corotating frame")
     color_bar.set_label("Plasma beta")
 elif colormode == 'alf':
@@ -121,6 +126,9 @@ elif colormode == 'alf':
 elif colormode == 'alfmach':
     ax.set_title("Alfven Mach number in heliocentric corotating frame")
     color_bar.set_label("Alfven Mach number")
+elif colormode == 'br':
+    ax.set_title("Radial magnetic field in heliocentric corotating frame")
+    color_bar.set_label("Radial magnetic field (nT)")
 
 
 plt.show()
