@@ -5,8 +5,12 @@
 import cdflib
 import numpy as np
 from matplotlib import pyplot as plt
-#import datetime
+import datetime
 from os import listdir
+from bisect import insort
+import traces
+import pandas
+import pickle
 
 def unpack_vars(filename, varnamelist):
     "Loads variable arrays listed in varnamelist from filename into a list of arrays"
@@ -54,3 +58,87 @@ def time_lerp(epoch, epoch_b, b_mag):
             b_lerp.append((delta1/delta*b_mag[idx-1] + delta2/delta*b_mag[idx]))
     b_lerp = np.array(b_lerp)
     return b_lerp
+
+def time_median_filter(signal,epoch,filter_radius):
+    filtered = np.zeros_like(signal)
+    for i in range(0,len(signal)):
+        curr_window = []
+        #right window
+        j = 1
+        while i + j < len(signal) and epoch[i+j]-epoch[i]<=filter_radius:
+            insort(curr_window,signal[i+j])
+            j+=1
+        #left window
+        k = 1
+        while (i-k) >= 0 and (epoch[i]-epoch[i-k]) <= filter_radius:
+            insort(curr_window,signal[i-k])
+            k+=1
+        if len(curr_window) % 2 == 0:
+            if i + j < len(signal):
+                insort(curr_window,signal[i+j])
+            elif i - k >= 0:
+                insort(curr_window,signal[i-k])
+            else:
+                insort(curr_window,0)
+        filtered[i] = curr_window[len(curr_window)//2]
+    return filtered
+
+def uniform_cadence(signal,epoch,sampling_period):
+    tseries = traces.TimeSeries(zip(epoch,signal))
+    uniform = tseries.moving_average(sampling_period,pandas=True)
+    return uniform
+
+def uniform_median_filter(signal,epoch,sampling_period,filter_radius):
+    tseries = traces.TimeSeries(zip(epoch,signal))
+    uniform = tseries.moving_average(sampling_period,pandas=True)
+    return uniform.rolling(filter_radius).median(center=True)
+
+
+# time = np.append(np.linspace(0.0,2,600),np.linspace(2,4,200)) + np.random.normal(0,0.001,800)
+# val1 = np.cos(2*np.pi*time) 
+# val2 = val1 + np.random.normal(0,0.1,800)
+# val3 = uniform_median_filter(val2,time,0.001,101)
+# # val3 = time_median_filter(val2,time,0.2)
+# # plt.plot(time,val1)
+# # plt.show()
+# # plt.plot(time,val2)
+# # plt.show()
+# # plt.plot(time,val3)
+# # plt.show()
+# fig = plt.figure(figsize=(12,9))
+# fig.add_subplot(111).plot(time,val1)
+# fig.add_subplot(111).plot(time,val2)
+# val3.plot()
+# plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

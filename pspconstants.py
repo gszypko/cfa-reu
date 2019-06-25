@@ -14,5 +14,5 @@ mp_kg = 1.6726219e-27 #proton mass in kg
 k_b = 1.38064852e-23 #boltzmann constant in m^2 kg s^-2 K^-1
 mu_0 = 4e-7*np.pi #vacuum permeability in T m / A
 
-path = '/data/reu/gszypko/data/loopback/'
-mag_path = '/data/reu/gszypko/data/mag/'
+path = '/data/reu/gszypko/data/approach1/'
+mag_path = '/data/reu/gszypko/data/approach1mag/'

@@ -31,18 +31,20 @@ datamode = sys.argv[1]
 #show=display plots on screen
 #file=save plots to file directory
 outputmode = 'file'
-br_color = False
+br_color = True
 
 ang_res = 5 #degrees, size of angular bins to plot
 ang_start = -45 #degrees, heading of first bin to plot
 ang_end = -20
+
+filter_radius = 30*60*1e9 #in nanoseconds
 
 carrlon, scpos = psplib.multi_unpack_vars(path, ['carr_longitude','sc_pos_HCI'])
 dist = psplib.compute_magnitudes(scpos/au_km,True)
 
 output_path = '/home/gszypko/Desktop/norm_plots/'+datamode+'/'
 if br_color:
-    output_path = '/home/gszypko/Desktop/bcolor_plots/'+datamode+'/'
+    output_path = '/home/gszypko/Desktop/bcolor_filtered_plots/'+datamode+'/'
 
 
 if datamode in {'vr','alfmach'}:
@@ -104,6 +106,19 @@ elif datamode == 'alfmach':
 if not os.path.exists(output_path):
     os.makedirs(output_path)
 
+if br_color:
+    if datamode == 'b':
+        valid = np.where(np.logical_and(abs(data) < 1e20,abs(b_r) < 1e20))
+        b_r = psplib.time_median_filter(b_r[valid],epoch_b[valid],filter_radius)
+    else:
+        valid = np.where(np.logical_and(abs(data) < 1e20,abs(b_r_lerp) < 1e20))
+        b_r_lerp = psplib.time_median_filter(b_r_lerp[valid],epoch[valid],filter_radius)
+else:
+    valid = np.where(abs(data) < 1e20)
+
+data = data[valid]
+dist = dist[valid]
+
 for angle in range(ang_start,ang_end,ang_res):
     fig = plt.figure(figsize=(12,9))
     ax = fig.add_subplot(111)
@@ -114,7 +129,7 @@ for angle in range(ang_start,ang_end,ang_res):
     ax.set_ylabel(y_label)
     if datamode == 'beta':
         ax.set_yscale('log')
-    ang_slice = np.where(np.logical_and(np.logical_and(np.greater(carrlon,angle),np.less(carrlon,angle+ang_res)),np.less(abs(data),1e30)))
+    ang_slice = np.where(np.logical_and(np.greater(carrlon,angle),np.less(carrlon,angle+ang_res)))
     if br_color:
         if datamode == 'b':
             scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=1,c=b_r[ang_slice],cmap='bwr',vmin=-10,vmax=10)
