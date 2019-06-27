@@ -16,3 +16,4 @@ mu_0 = 4e-7*np.pi #vacuum permeability in T m / A
 
 path = '/data/reu/gszypko/data/approach1/'
 mag_path = '/data/reu/gszypko/data/approach1mag/'
+precomp_path = '/data/reu/gszypko/data/precomp/approach1/'

@@ -90,9 +90,18 @@ def uniform_cadence(signal,epoch,sampling_period):
 
 def uniform_median_filter(signal,epoch,sampling_period,filter_radius):
     tseries = traces.TimeSeries(zip(epoch,signal))
+    #NOTE: traces.TimeSeries.moving_average is implemented such that if sampling_period
+    #is given as a number and not a timedelta object, it treats it as seconds
     uniform = tseries.moving_average(sampling_period,pandas=True)
     return uniform.rolling(filter_radius).median(center=True)
 
+def get_min_diff(values):
+    curr_min = values[1]-values[0]
+    for i in range(1,len(values)-1):
+        this_diff = values[i+1]-values[i]
+        if this_diff < curr_min:
+            curr_min = this_diff
+    return curr_min
 
 # time = np.append(np.linspace(0.0,2,600),np.linspace(2,4,200)) + np.random.normal(0,0.001,800)
 # val1 = np.cos(2*np.pi*time) 
