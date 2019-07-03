@@ -3,12 +3,12 @@
 #Automates production of radial angular slice plots for different variables
 
 echo "starting"
-./angslice.py temp
-echo "temp complete"
-./angslice.py vr
-echo "vr complete"
-./angslice.py np
-echo "np complete"
+# ./angslice.py temp
+# echo "temp complete"
+# ./angslice.py vr
+# echo "vr complete"
+# ./angslice.py np
+# echo "np complete"
 ./angslice.py beta
 echo "beta complete"
 ./angslice.py alf

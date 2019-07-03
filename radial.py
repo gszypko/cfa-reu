@@ -11,28 +11,23 @@ from matplotlib import pyplot as plt
 from os import listdir
 #from scipy.optimize import curve_fit
 import psplib
+from pspconstants import *
 
 #temp=temperature, vr=radial vel, np=density, b=magnetic field
 #beta=plasma beta, alf=alfven speed, alfmach=alfven machn number
 colormode = 'br'
 
-au_km = 1.496e8
-
-mp_kg = 1.6726219e-27 #proton mass in kg
-k_b = 1.38064852e-23 #boltzmann constant in m^2 kg s^-2 K^-1
-mu_0 = 4e-7*np.pi #vacuum permeability in T m / A
-
-path = '/data/reu/gszypko/data/loopback/'
-mag_path = '/data/reu/gszypko/data/mag/'
 file_names = sorted(listdir(path))
 mag_files = sorted(listdir(mag_path))
 
 fig = plt.figure(figsize=(12,9))
 ax = fig.add_subplot(111,projection='polar')
 
-for i in range(0,len(file_names)):
-    file_name = path + file_names[i]
-    carrlon, carrlat, scpos = psplib.unpack_vars(file_name, ['carr_longitude','carr_latitude','sc_pos_HCI'])
+# for i in range(0,len(file_names)):
+for i in range(0,1):
+#     file_name = path + file_names[i]
+#     carrlon, carrlat, scpos = psplib.unpack_vars(file_name, ['carr_longitude','carr_latitude','sc_pos_HCI'])
+    carrlon, carrlat, scpos = psplib.multi_unpack_vars(path, ['carr_longitude','carr_latitude','sc_pos_HCI'])
     dist = psplib.compute_magnitudes(scpos/au_km, True)
 #     print(file_names[i])
 #     print("r="+str(round(np.amin(dist),2))+" to "+str(round(np.amax(dist),2)))
@@ -45,14 +40,13 @@ for i in range(0,len(file_names)):
     if colormode in {'temp','beta','alf','alfmach'}:
         wp = psplib.unpack_vars(file_name, ['wp_moment'])[0]
     if colormode in {'b','beta','alf','alfmach','br'}:
-        epoch = psplib.unpack_vars(file_name, ['epoch'])[0]
-        mag_file = mag_path + mag_files[i]
-        b_rtn, epoch_b = psplib.unpack_vars(mag_file, ['psp_fld_mag_rtn','psp_fld_mag_epoch'])
-        b_mag = psplib.compute_magnitudes(b_rtn)
-        b_lerp = psplib.time_lerp(epoch,epoch_b,b_mag)
-    
+        foo = 1
+#         epoch = psplib.unpack_vars(file_name, ['epoch'])[0]
+#         mag_file = mag_path + mag_files[i]
+#         b_rtn, epoch_b = psplib.unpack_vars(mag_file, ['psp_fld_mag_rtn','psp_fld_mag_epoch'])
+#         b_mag = psplib.compute_magnitudes(b_rtn)
+#         b_lerp = psplib.time_lerp(epoch,epoch_b,b_mag)
 #     dist = psplib.compute_magnitudes(scpos/au_km, True)
-
     n=1 #step between good data points to plot
     if colormode == 'temp':
         temp = np.square(wp)*(mp_kg/(k_b*1e-6)/3)
@@ -83,9 +77,14 @@ for i in range(0,len(file_names)):
         good = np.where(abs(alfmach) < 1e12)
         color = alfmach[good][::n]
     elif colormode == 'br':
-        b_r_lerp = psplib.time_lerp(epoch,epoch_b,b_rtn[:,0])
-        good = np.where(abs(b_r_lerp)<1e12)
-        color = b_r_lerp[good][::n]
+#         b_r_lerp = psplib.time_lerp(epoch,epoch_b,b_rtn[:,0])
+#         good = np.where(abs(b_r_lerp)<1e12)
+#         color = b_r_lerp[good][::n]
+        b_r_lerp = np.load(precomp_path+'b_r_spc.npy')
+        dqf_gen = np.load(precomp_path+'dqf_gen.npy')
+        good = np.where(np.logical_and(abs(b_r_lerp) < dat_upperbnd,dqf_gen==0))
+        color = b_r_lerp[good]
+
     else:
         good = np.where(True)
 
@@ -96,7 +95,7 @@ for i in range(0,len(file_names)):
 
 #Uncomment for logarithmic color scaling
 #     plt.scatter(theta,radius,cmap='jet',c=color,s=300,norm=matplotlib.colors.LogNorm())
-    plt.scatter(theta,radius,cmap='jet',c=color,s=300,vmin=-20,vmax=20)
+    plt.scatter(theta,radius,cmap='bwr',c=color,s=300,vmin=-20,vmax=20)
 
 ax.set_rmax(0.4)
 ax.set_thetamin(270)

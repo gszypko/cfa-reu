@@ -31,7 +31,7 @@ datamode = sys.argv[1]
 #show=display plots on screen
 #file=save plots to file directory
 outputmode = 'file'
-br_color = False
+br_color = True
 
 ang_res = 5 #degrees, size of angular bins to plot
 ang_start = -45 #degrees, heading of first bin to plot
@@ -41,31 +41,33 @@ filter_radius = 30*60*1e9 #in nanoseconds
 
 carrlon, scpos = psplib.multi_unpack_vars(path, ['carr_longitude','sc_pos_HCI'])
 dist = psplib.compute_magnitudes(scpos/au_km,True)
+epoch_ns = psplib.multi_unpack_vars(path, ['epoch'])[0]
+epoch = np.array([datetime_t0+datetime.timedelta(seconds=i/1e9) for i in epoch_ns])
 
 output_path = '/home/gszypko/Desktop/testing/'+datamode+'/'
 if br_color:
     output_path = '/home/gszypko/Desktop/bcolor_filtered_plots/'+datamode+'/'
 
 
-# if datamode in {'vr','alfmach'}:
-#     vp = psplib.multi_unpack_vars(path, ['vp_moment_RTN'])[0]
-#     v_r = vp[:,0]
-# if datamode in {'np','beta','alf','alfmach'}:
-#     n_p = psplib.multi_unpack_vars(path, ['np_moment'])[0]
-# if datamode in {'temp','beta','alf','alfmach'}:
-#     wp = psplib.multi_unpack_vars(path, ['wp_moment'])[0]
-#     temp = np.square(wp)*(mp_kg/(k_b*1e-6)/3)
-# if datamode in {'b','beta','alf','alfmach'} or br_color:
-#     epoch = psplib.multi_unpack_vars(path, ['epoch'])[0]
-#     b_rtn, epoch_b = psplib.multi_unpack_vars(mag_path, ['psp_fld_mag_rtn','psp_fld_mag_epoch'])
-#     b_mag = psplib.compute_magnitudes(b_rtn)
-#     b_r = b_rtn[:,0]
-#     if datamode != 'b': #only need to interpolate when combining with normal data set
-#         b_lerp = psplib.time_lerp(epoch,epoch_b,b_mag)
-#         b_r_lerp = psplib.time_lerp(epoch,epoch_b,b_r)
+#                         if datamode in {'vr','alfmach'}:
+#                             vp = psplib.multi_unpack_vars(path, ['vp_moment_RTN'])[0]
+#                             v_r = vp[:,0]
+#                         if datamode in {'np','beta','alf','alfmach'}:
+#                             n_p = psplib.multi_unpack_vars(path, ['np_moment'])[0]
+#                         if datamode in {'temp','beta','alf','alfmach'}:
+#                             wp = psplib.multi_unpack_vars(path, ['wp_moment'])[0]
+#                             temp = np.square(wp)*(mp_kg/(k_b*1e-6)/3)
+if datamode == 'b':
+    epoch_b_ns = psplib.multi_unpack_vars(mag_path, ['psp_fld_mag_epoch'])[0]
+    epoch_b = np.array([datetime_t0+datetime.timedelta(seconds=i/1e9) for i in epoch_b_ns])
+#                             b_mag = psplib.compute_magnitudes(b_rtn)
+#                             b_r = b_rtn[:,0]
+#                             if datamode != 'b': #only need to interpolate when combining with normal data set
+#                                 b_lerp = psplib.time_lerp(epoch,epoch_b,b_mag)
+#                                 b_r_spc = psplib.time_lerp(epoch,epoch_b,b_r)
 
 
-
+dqf_gen = np.load(precomp_path+'dqf_gen.npy')
 if datamode == 'temp':
     plot_title = 'Proton temperature '
     y_label = 'Proton temperature (K)'
@@ -80,7 +82,7 @@ elif datamode == 'np':
     plot_title = 'Proton density '
     y_label = 'Proton density (cm^-3)'
     data = np.load(precomp_path+'n_p.npy')
-    ybounds = (0,1500)
+    ybounds = (0,600)
 elif datamode == 'b':
     plot_title = 'Magnetic field strength '
     y_label = 'Field strength (nT)'
@@ -118,16 +120,27 @@ if not os.path.exists(output_path):
 
 if br_color:
     if datamode == 'b':
-        valid = np.where(np.logical_and(abs(data) < 1e20,abs(b_r) < 1e20))
-        b_r = psplib.time_median_filter(b_r[valid],epoch_b[valid],filter_radius)
+        #NOTE: fields data currently lacks quality flags
+        valid = np.where(abs(data) < dat_upperbnd)
+        b_r = np.load(precomp_path+'b_mag.npy')[valid]
     else:
-        valid = np.where(np.logical_and(abs(data) < 1e20,abs(b_r_lerp) < 1e20))
-        b_r_lerp = psplib.time_median_filter(b_r_lerp[valid],epoch[valid],filter_radius)
+        valid = np.where(np.logical_and(abs(data) < dat_upperbnd,dqf_gen==0))
+        b_r_spc = np.load(precomp_path+'b_r_spc.npy')[valid]
 else:
-    valid = np.where(abs(data) < 1e20)
+    valid = np.where(np.logical_and(abs(data) < dat_upperbnd,dqf_gen==0))
 
 data = data[valid]
 dist = dist[valid]
+epoch = epoch[valid]
+carrlon = carrlon[valid]
+
+for transient in known_transients:
+    normal = np.where(np.logical_or(epoch < transient[0], epoch > transient[1]))
+    data = data[normal]
+    dist = dist[normal]
+    carrlon = carrlon[normal]
+    if br_color:
+        b_r_spc = b_r_spc[normal]
 
 for angle in range(ang_start,ang_end,ang_res):
     fig = plt.figure(figsize=(12,9))
@@ -140,13 +153,16 @@ for angle in range(ang_start,ang_end,ang_res):
     if datamode == 'beta':
         ax.set_yscale('log')
     ang_slice = np.where(np.logical_and(np.greater(carrlon,angle),np.less(carrlon,angle+ang_res)))
+#     print(b_r_spc[ang_slice].shape)
+#     print(data[ang_slice].shape)
+#     print(dist[ang_slice].shape)
     if br_color:
         if datamode == 'b':
             scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=1,c=b_r[ang_slice],cmap='bwr',vmin=-10,vmax=10)
             color_bar = fig.colorbar(scatter, ax=ax)
             color_bar.set_label('Radial magnetic field (nT)')
         else:
-            scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=1,c=b_r_lerp[ang_slice],cmap='bwr',vmin=-10,vmax=10)
+            scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=1,c=b_r_spc[ang_slice],cmap='bwr',vmin=-10,vmax=10)
             color_bar = fig.colorbar(scatter, ax=ax)
             color_bar.set_label('Radial magnetic field (nT)')
     else:

@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-#psplib.py
-#Library for reading in PSP data from .cdf files
+"""
+psplib.py
+Greg Szypko, Summer 2019
+A library for reading in and manipulating PSP data from .cdf files
+"""
 
 import cdflib
 import numpy as np
-from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 import datetime
 from os import listdir
-from bisect import insort
+# from bisect import insort
 import traces
 import pandas
-import pickle
 
 def unpack_vars(filename, varnamelist):
     "Loads variable arrays listed in varnamelist from filename into a list of arrays"
@@ -20,15 +22,28 @@ def unpack_vars(filename, varnamelist):
         outputs.append(dat.varget(varname))
     return outputs
 
-def multi_unpack_vars(directory, varnamelist):
+def multi_unpack_vars(directory, varnamelist,startfile=0,endfile=-1):
     "Loads variable arrays listed in varnamelist from all files in directory into a list of arrays"
     filenames = sorted(listdir(directory))
-    outputs = unpack_vars(directory+filenames[0],varnamelist)
-    for i in range(1,len(filenames)):
+    outputs = unpack_vars(directory+filenames[startfile],varnamelist)
+    if endfile == -1:
+        endfile = len(filenames) - 1
+    for i in range(startfile+1,endfile+1):
         newoutputs = unpack_vars(directory+filenames[i],varnamelist)
         for j in range(0,len(newoutputs)):
             outputs[j] = np.append(outputs[j],newoutputs[j],axis=0)
     return outputs
+
+# def list_file_bounds(directory):
+#     filenames = sorted(listdir(directory))
+#     bounds = []
+#     for i in range(0,len(filenames)):
+#         if i == 0:
+#             bounds.append((0,1))
+#         elif i == len(filenames)-1:
+#             bounds.append((i-1,i))
+#         else:
+#             bounds.append((i-1,i+1))
 
 def compute_magnitudes(scpos, project=False):
     "Takes three-dimensional array of vectors, returns corresponding magnitudes"
@@ -59,49 +74,70 @@ def time_lerp(epoch, epoch_b, b_mag):
     b_lerp = np.array(b_lerp)
     return b_lerp
 
-def time_median_filter(signal,epoch,filter_radius):
-    filtered = np.zeros_like(signal)
-    for i in range(0,len(signal)):
-        curr_window = []
-        #right window
-        j = 1
-        while i + j < len(signal) and epoch[i+j]-epoch[i]<=filter_radius:
-            insort(curr_window,signal[i+j])
-            j+=1
-        #left window
-        k = 1
-        while (i-k) >= 0 and (epoch[i]-epoch[i-k]) <= filter_radius:
-            insort(curr_window,signal[i-k])
-            k+=1
-        if len(curr_window) % 2 == 0:
-            if i + j < len(signal):
-                insort(curr_window,signal[i+j])
-            elif i - k >= 0:
-                insort(curr_window,signal[i-k])
-            else:
-                insort(curr_window,0)
-        filtered[i] = curr_window[len(curr_window)//2]
-    return filtered
+# DEPRECATED IN FAVOR OF uniform_median_filter()
+# def time_median_filter(signal,epoch,filter_radius):
+#     filtered = np.zeros_like(signal)
+#     for i in range(0,len(signal)):
+#         curr_window = []
+#         #right window
+#         j = 1
+#         while i + j < len(signal) and epoch[i+j]-epoch[i]<=filter_radius:
+#             insort(curr_window,signal[i+j])
+#             j+=1
+#         #left window
+#         k = 1
+#         while (i-k) >= 0 and (epoch[i]-epoch[i-k]) <= filter_radius:
+#             insort(curr_window,signal[i-k])
+#             k+=1
+#         if len(curr_window) % 2 == 0:
+#             if i + j < len(signal):
+#                 insort(curr_window,signal[i+j])
+#             elif i - k >= 0:
+#                 insort(curr_window,signal[i-k])
+#             else:
+#                 insort(curr_window,0)
+#         filtered[i] = curr_window[len(curr_window)//2]
+#     return filtered
 
 def uniform_cadence(signal,epoch,sampling_period):
+    """Converts signal array with corresponding epoch array into a pandas Series, at a 
+    constant cadence. Samples to sampling_period, the length of time between uniform cadence
+    data, calculated by moving average. NOTE: If not given as a datetime.timedelta,
+    sampling_period is treated as seconds."""
     tseries = traces.TimeSeries(zip(epoch,signal))
     uniform = tseries.moving_average(sampling_period,pandas=True)
     return uniform
 
-def uniform_median_filter(signal,epoch,sampling_period,filter_radius):
+def uniform_median_filter(signal,epoch,sampling_period,filter_window,output_epoch=None):
+    """Converts signal array with corresponding epoch array into a median-filtered pandas Series, at a 
+    constant cadence. Samples to sampling_period, the length of time between uniform cadence
+    data, calculated by moving average. Filter_window is in number of array elements.
+    output_epoch is the array of datetimes corresponding to the array to be output. If not
+    specified, epoch is used.
+    NOTE: If not given as a datetime.timedelta, sampling_period is treated as seconds."""
+    if output_epoch == None:
+        output_epoch = epoch
     tseries = traces.TimeSeries(zip(epoch,signal))
-    #NOTE: traces.TimeSeries.moving_average is implemented such that if sampling_period
-    #is given as a number and not a timedelta object, it treats it as seconds
     uniform = tseries.moving_average(sampling_period,pandas=True)
-    return uniform.rolling(filter_radius).median(center=True)
+    filtered = traces.TimeSeries(uniform.rolling(filter_window).median(center=True))
+    return resample_variable(filtered,output_epoch)
 
 def get_min_diff(values):
+    "Calculates minimum difference between adjacent values in array values"
     curr_min = values[1]-values[0]
     for i in range(1,len(values)-1):
         this_diff = values[i+1]-values[i]
         if this_diff < curr_min:
             curr_min = this_diff
     return curr_min
+
+def resample_variable(signal, epoch):
+    """Takes uniform upsampled traces TimeSeries (signal) back to an array of the original cadence, corresponding 
+    to the times in epoch (datetime array). Accomplishes this using linear interpolation."""
+    signal_out = np.zeros_like(epoch)
+    for i in range(0,len(epoch)):
+        signal_out[i] = signal.get(epoch[i],'linear')
+    return signal_out
 
 # time = np.append(np.linspace(0.0,2,600),np.linspace(2,4,200)) + np.random.normal(0,0.001,800)
 # val1 = np.cos(2*np.pi*time) 
