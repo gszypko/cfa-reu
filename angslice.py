@@ -122,25 +122,34 @@ if br_color:
     if datamode == 'b':
         #NOTE: fields data currently lacks quality flags
         valid = np.where(abs(data) < dat_upperbnd)
-        b_r = np.load(precomp_path+'b_mag.npy')[valid]
+        b_r = np.load(precomp_path+'b_r.npy')[valid]
+        epoch_b = epoch_b[valid]
     else:
         valid = np.where(np.logical_and(abs(data) < dat_upperbnd,dqf_gen==0))
         b_r_spc = np.load(precomp_path+'b_r_spc.npy')[valid]
+        epoch = epoch[valid]
 else:
     valid = np.where(np.logical_and(abs(data) < dat_upperbnd,dqf_gen==0))
 
 data = data[valid]
 dist = dist[valid]
-epoch = epoch[valid]
 carrlon = carrlon[valid]
 
 for transient in known_transients:
-    normal = np.where(np.logical_or(epoch < transient[0], epoch > transient[1]))
-    data = data[normal]
-    dist = dist[normal]
-    carrlon = carrlon[normal]
-    if br_color:
-        b_r_spc = b_r_spc[normal]
+    if datamode == 'b':
+        normal = np.where(np.logical_or(epoch_b < transient[0], epoch_b > transient[1]))
+        data = data[normal]
+        dist = dist[normal]
+        carrlon = carrlon[normal]
+        if br_color:
+            b_r = b_r[normal]
+    else:
+        normal = np.where(np.logical_or(epoch < transient[0], epoch > transient[1]))
+        data = data[normal]
+        dist = dist[normal]
+        carrlon = carrlon[normal]
+        if br_color:
+            b_r_spc = b_r_spc[normal]
 
 for angle in range(ang_start,ang_end,ang_res):
     fig = plt.figure(figsize=(12,9))
