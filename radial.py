@@ -12,10 +12,15 @@ from os import listdir
 #from scipy.optimize import curve_fit
 import psplib
 from pspconstants import *
+import os
 
 #temp=temperature, vr=radial vel, np=density, b=magnetic field
 #beta=plasma beta, alf=alfven speed, alfmach=alfven machn number
-colormode = 'br'
+colormode = 'vr'
+
+output_path = '/home/gszypko/Desktop/radial/'+colormode
+if not os.path.exists(output_path):
+    os.makedirs(output_path)
 
 file_names = sorted(listdir(path))
 mag_files = sorted(listdir(mag_path))
@@ -34,9 +39,11 @@ for i in range(0,1):
 #     print("theta="+str(round(np.amin(carrlon)+360,1))+" to "+str(round(np.amax(carrlon)+360,1))+'\n')
 #     continue
     if colormode in {'vr','alfmach'}:
-        vp = psplib.unpack_vars(file_name, ['vp_moment_RTN'])[0]
+#         vp = psplib.unpack_vars(file_name, ['vp_moment_RTN'])[0]
+        vp = psplib.multi_unpack_vars(path, ['vp_moment_RTN'])[0]
     if colormode in {'np','beta','alf','alfmach'}:
-        n_p = psplib.unpack_vars(file_name, ['np_moment'])[0]
+#         n_p = psplib.unpack_vars(file_name, ['np_moment'])[0]
+        n_p = psplib.unpack_vars(path, ['np_moment'])[0]
     if colormode in {'temp','beta','alf','alfmach'}:
         wp = psplib.unpack_vars(file_name, ['wp_moment'])[0]
     if colormode in {'b','beta','alf','alfmach','br'}:
@@ -95,11 +102,12 @@ for i in range(0,1):
 
 #Uncomment for logarithmic color scaling
 #     plt.scatter(theta,radius,cmap='jet',c=color,s=300,norm=matplotlib.colors.LogNorm())
-    plt.scatter(theta,radius,cmap='bwr',c=color,s=300,vmin=-20,vmax=20)
+#     plt.scatter(theta,radius,cmap='bwr',c=color,s=300,vmin=-20,vmax=20)
+    plt.scatter(theta,radius,cmap='bwr',c=color,s=300)
 
 ax.set_rmax(0.4)
-ax.set_thetamin(270)
-ax.set_thetamax(360)
+ax.set_thetamin(315)
+ax.set_thetamax(45)
 ax.set_rlabel_position(135-45/2)
 color_bar = plt.colorbar()
 
@@ -129,5 +137,5 @@ elif colormode == 'br':
     ax.set_title("Radial magnetic field in heliocentric corotating frame")
     color_bar.set_label("Radial magnetic field (nT)")
 
-
-plt.show()
+fig.savefig(output_path)
+# plt.show()

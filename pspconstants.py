@@ -22,10 +22,10 @@ dat_upperbnd = 1e30
 datetime_t0 = datetime.datetime(2000,1,1,12,0,0)
 
 # Path where relevant spc data is located
-path = '/data/reu/gszypko/data/approach1/'
+path = '/data/reu/gszypko/data/approach2/'
 # Path where relevant fields data is located
-mag_path = '/data/reu/gszypko/data/approach1mag/'
+mag_path = '/data/reu/gszypko/data/approach2mag/'
 # Path where precomputed data arrays are saved to and loaded from
-precomp_path = '/data/reu/gszypko/data/precomp/approach1/'
+precomp_path = '/data/reu/gszypko/data/precomp/approach2/'
 
 known_transients = [(datetime.datetime(2018,11,11,23,53,0),datetime.datetime(2018,11,12,6,0,0))]

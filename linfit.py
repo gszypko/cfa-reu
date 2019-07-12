@@ -52,7 +52,8 @@ for angle in range(ang_start,ang_end,ang_res):
     min_dist = 0.16
     max_dist = 0.29
     ax.plot([min_dist,max_dist],[min_dist*slope + intercept,max_dist*slope + intercept],color='black')
-#     ax.text(0.1,0.1,transform=ax.transAxes)
+    ax.text(0.1,0.8,'r^2 = '+str(r_value**2),transform=ax.transAxes)
+    ax.text(0.1,0.9,'slope = '+str(slope),transform=ax.transAxes)
 #     plt.show()
     fig.savefig(output_path+str(abs(angle)))
     plt.close(fig)
