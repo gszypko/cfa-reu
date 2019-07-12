@@ -106,7 +106,7 @@ for i in range(0,1):
     plt.scatter(theta,radius,cmap='bwr',c=color,s=300)
 
 ax.set_rmax(0.4)
-ax.set_thetamin(315)
+ax.set_thetamin(-45)
 ax.set_thetamax(45)
 ax.set_rlabel_position(135-45/2)
 color_bar = plt.colorbar()
