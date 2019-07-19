@@ -71,7 +71,7 @@ r_sq = r_value**2
 
 fig, ax = plt.subplots()
 
-image = ax.imshow(r_sq, cmap='Blues', interpolation='nearest',vmin=1e-2,norm=colors.LogNorm(),origin='lower',extent=[-45,-20,0,25])
+image = ax.imshow(r_sq, cmap='Blues', interpolation='nearest',vmin=1e-1,norm=colors.LogNorm(),origin='lower',extent=[-45,-20,0,25])
 color_bar = fig.colorbar(image, ax=ax)
 color_bar.set_label('r^2')
 ax.set_title('R Squared for Linear Fit of Radial Velocity by Angular Slice')

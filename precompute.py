@@ -15,6 +15,7 @@ import traces
 import datetime
 from os import listdir
 
+
 filter_time = datetime.timedelta(hours=1) #1 hour
 
 epoch_ns, dqf = psplib.multi_unpack_vars(path, ['epoch','DQF'])
@@ -23,32 +24,42 @@ epoch = np.array([datetime_t0+datetime.timedelta(seconds=i/1e9) for i in epoch_n
 
 epoch_min_diff = psplib.get_min_diff(epoch)
 
-# vp = psplib.multi_unpack_vars(path, ['vp_moment_RTN'])[0]
-# v_r = vp[:,0]
-# np.save(precomp_path+'v_r',v_r)
-# print('v_r computed')
-v_r_good = np.where(np.logical_and(abs(v_r)<dat_upperbnd,dqf==0))
-v_r_filtered = psplib.uniform_median_filter(v_r[v_r_good],epoch[v_r_good],epoch_min_diff,filter_time // epoch_min_diff,epoch)
-np.save(precomp_path+'v_r_filtered',v_r)
+#             vp, vp_fit = psplib.multi_unpack_vars(path, ['vp_moment_RTN','vp_fit_RTN'])
+#             v_r = vp[:,0]
+#             v_r_fit = vp_fit[:,0]
+#             np.save(precomp_path+'v_r',v_r)
+#             np.save(precomp_path+'v_r_fit',v_r_fit)
+#             print('v_r computed')
+#             # v_r_good = np.where(np.logical_and(abs(v_r)<dat_upperbnd,dqf==0))
+#             # v_r_filtered = psplib.uniform_median_filter(v_r[v_r_good],epoch[v_r_good],epoch_min_diff,filter_time // epoch_min_diff,epoch)
+#             # np.save(precomp_path+'v_r_filtered',v_r)
+#             # 
+#             n_p, n_p_fit = psplib.multi_unpack_vars(path, ['np_moment','np_fit'])
+#             np.save(precomp_path+'n_p',n_p)
+#             np.save(precomp_path+'n_p_fit',n_p_fit)
+#             print('n_p computed')
+#             # n_p_good = np.where(np.logical_and(abs(n_p)<dat_upperbnd,dqf==0))
+#             # n_p_filtered = psplib.uniform_median_filter(n_p[n_p_good],epoch,epoch_min_diff,filter_time // epoch_min_diff,epoch)
+#             # np.save(precomp_path+'n_p_filtered',n_p)
+#             # 
+#             wp, wp_fit = psplib.multi_unpack_vars(path, ['wp_moment','wp_fit'])
+#             temp = np.square(wp)*(mp_kg/(k_b*1e-6)/3)
+#             temp_fit = np.square(wp_fit)*(mp_kg/(k_b*1e-6)/3)
+#             np.save(precomp_path+'temp',temp)
+#             np.save(precomp_path+'temp_fit',temp_fit)
+#             print('temp computed')
+#             # temp_good = np.where(np.logical_and(abs(temp)<dat_upperbnd,dqf==0))
+#             # temp_filtered = psplib.uniform_median_filter(temp[temp_good],epoch,epoch_min_diff,filter_time // epoch_min_diff,epoch)
+#             # np.save(precomp_path+'n_p_filtered',n_p)
 # 
-# n_p = psplib.multi_unpack_vars(path, ['np_moment'])[0]
-# np.save(precomp_path+'n_p',n_p)
-# print('n_p computed')
-n_p_good = np.where(np.logical_and(abs(n_p)<dat_upperbnd,dqf==0))
-n_p_filtered = psplib.uniform_median_filter(n_p[n_p_good],epoch,epoch_min_diff,filter_time // epoch_min_diff,epoch)
-np.save(precomp_path+'n_p_filtered',n_p)
 # 
-# wp = psplib.multi_unpack_vars(path, ['wp_moment'])[0]
-# temp = np.square(wp)*(mp_kg/(k_b*1e-6)/3)
-# np.save(precomp_path+'temp',temp)
-# print('temp computed')
-temp_good = np.where(np.logical_and(abs(temp)<dat_upperbnd,dqf==0))
-temp_filtered = psplib.uniform_median_filter(temp[temp_good],epoch,epoch_min_diff,filter_time // epoch_min_diff,epoch)
-np.save(precomp_path+'n_p_filtered',n_p)
+#             dqf_gen = psplib.multi_unpack_vars(path,['DQF'])[0][:,0]
+#             np.save(precomp_path+'dqf_gen',dqf_gen)
 
-
-# dqf_gen = psplib.multi_unpack_vars(path,['DQF'])[0][:,0]
-# np.save(precomp_path+'dqf_gen',dqf_gen)
+if approach_num == 2:
+    dqf_fullscan = psplib.multi_unpack_vars(path,['DQF'])[0][:,16]
+    np.save(precomp_path+'dqf_fullscan',dqf_fullscan)
+exit()
 
 # b_bounds = psplib.list_file_bounds(mag_path)
 filenames = sorted(listdir(mag_path))
@@ -96,9 +107,9 @@ for i in range(0,len(filenames)):
     
     b_mag_spc = psplib.uniform_median_filter(b_mag,epoch_b,min_diff,filter_time // min_diff,this_epoch)
     print('b_mag_filtered created')
-#     b_r_spc = psplib.uniform_median_filter(b_r,epoch_b,min_diff,filter_time // min_diff,this_epoch)
-#     print('b_r_filtered computed')
+    b_r_spc = psplib.uniform_median_filter(b_r,epoch_b,min_diff,filter_time // min_diff,this_epoch)
+    print('b_r_filtered computed')
     print('writing loop complete')
     np.save(precomp_path+'b_mag_spc'+str(i).zfill(3),b_mag_spc)
-#     np.save(precomp_path+'b_r_spc_'+str(i).zfill(3),b_r_spc)
+    np.save(precomp_path+'b_r_spc_'+str(i).zfill(3),b_r_spc)
     print('spc cadence b saved')

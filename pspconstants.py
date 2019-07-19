@@ -9,6 +9,8 @@ Defines physical constants as well as relevant path names for use in plotting sc
 import numpy as np
 import datetime
 
+approach_num = 2
+
 au_km = 1.496e8 #1 AU in kilometers
 
 mp_kg = 1.6726219e-27 #proton mass in kg
@@ -22,10 +24,12 @@ dat_upperbnd = 1e30
 datetime_t0 = datetime.datetime(2000,1,1,12,0,0)
 
 # Path where relevant spc data is located
-path = '/data/reu/gszypko/data/approach2/'
+path = '/data/reu/gszypko/data/approach'+str(approach_num)+'/'
 # Path where relevant fields data is located
-mag_path = '/data/reu/gszypko/data/approach2mag/'
+mag_path = '/data/reu/gszypko/data/approach'+str(approach_num)+'mag/'
 # Path where precomputed data arrays are saved to and loaded from
-precomp_path = '/data/reu/gszypko/data/precomp/approach2/'
+precomp_path = '/data/reu/gszypko/data/precomp/approach'+str(approach_num)+'/'
+
+default_output_path = '/home/gszypko/Desktop/'
 
 known_transients = [(datetime.datetime(2018,11,11,23,53,0),datetime.datetime(2018,11,12,6,0,0))]

@@ -14,7 +14,7 @@ from pspconstants import *
 import psplib
 import os
 
-output_path = '/home/gszypko/Desktop/linfit/vr/'
+output_path = '/home/gszypko/Desktop/doublechecktest/vr/'
 if not os.path.exists(output_path):
     os.makedirs(output_path)
 
@@ -27,14 +27,20 @@ y_label = 'Proton velocity (km/s)'
 
 v_r = np.load(precomp_path+'v_r.npy')
 dqf = np.load(precomp_path+'dqf_gen.npy')
+v_r_fit = np.load(precomp_path+'v_r_fit.npy')
 
 carrlon, scpos = psplib.multi_unpack_vars(path, ['carr_longitude','sc_pos_HCI'])
 dist = psplib.compute_magnitudes(scpos/au_km,True)
 
-valid = np.where(np.logical_and(abs(v_r)<dat_upperbnd,dqf==0))
-data = v_r[valid]
+percentdiff = abs((v_r_fit - v_r) / v_r)
+maxdiff = 0.05
+
+valid = np.where(np.logical_and(percentdiff < maxdiff,np.logical_and(abs(v_r)<dat_upperbnd,dqf==0)))
+data = (v_r[valid] + v_r_fit[valid])/2
 dist = dist[valid]
 carrlon = carrlon[valid]
+
+
 
 for angle in range(ang_start,ang_end,ang_res):
     fig = plt.figure(figsize=(12,9))

@@ -24,18 +24,65 @@ import os
 import psplib
 import sys
 from pspconstants import *
+import argparse
+
+parser = argparse.ArgumentParser()
+
+pointcolor = parser.add_mutually_exclusive_group()
+pointcolor.add_argument("--bcolor",action="store_true")
+pointcolor.add_argument("--longcolor",action="store_true")
+
+parser.add_argument("--tofile")
+
+parser.add_argument("--batch",type=int)
+
+parser.add_argument("--fitsmargin",type=float)
+
+parser.add_argument("datamode",help="data to be plotted on the y-axis",choices=["vr","np","temp","b","beta","alf","alfmach"])
+parser.add_argument("startangle",type=int)
+parser.add_argument("endangle",type=int)
+
+args = parser.parse_args()
+
+datamode = args.datamode
+ang_start = args.startangle
+ang_end = args.endangle
+
+
+br_color = args.bcolor
+long_color = args.longcolor
+
+if args.tofile:
+    outputmode = 'file'
+    output_path = default_output_path + args.tofile + '/'
+else:
+    outputmode = 'show'
+
+if args.batch:
+    ang_res = args.batch
+else:
+    ang_res = ang_end - ang_start
+
+if args.fitsmargin:
+    maxdiff = args.fitsmargin
+else:
+    maxdiff = 0.1
 
 #temp=temperature, vr=radial vel, np=density, b=magnetic field
 #beta=plasma beta, alf=alfven speed, alfmach=alfven mach number
-datamode = sys.argv[1]
+# datamode = sys.argv[1]
 #show=display plots on screen
 #file=save plots to file directory
-outputmode = 'file'
-br_color = True
+# outputmode = 'file'
+# br_color = False
 
-ang_res = 5 #degrees, size of angular bins to plot
-ang_start = -45 #degrees, heading of first bin to plot
-ang_end = -20
+# ang_start = -45 #degrees, heading of first bin to plot
+# ang_end = -20
+# ang_start = int(sys.argv[2]) #degrees, heading of first bin to plot
+# ang_end = int(sys.argv[3])
+
+# ang_res = ang_end - ang_start #degrees, size of angular bins to plot
+
 
 filter_radius = 30*60*1e9 #in nanoseconds
 
@@ -43,8 +90,10 @@ carrlon, scpos = psplib.multi_unpack_vars(path, ['carr_longitude','sc_pos_HCI'])
 dist = psplib.compute_magnitudes(scpos/au_km,True)
 epoch_ns = psplib.multi_unpack_vars(path, ['epoch'])[0]
 epoch = np.array([datetime_t0+datetime.timedelta(seconds=i/1e9) for i in epoch_ns])
+dqf = np.load(precomp_path+'dqf_gen.npy')
 
-output_path = '/home/gszypko/Desktop/testing/'+datamode+'/'
+output_path = '/home/gszypko/Desktop/stream_candidates/'+str(int(abs(ang_start)))+','+str(int(abs(ang_end)))+'/'
+# output_path = '/home/gszypko/Desktop/stream_candidates/'
 if br_color:
     output_path = '/home/gszypko/Desktop/bcolor_filtered_plots/'+datamode+'/'
 
@@ -72,16 +121,19 @@ if datamode == 'temp':
     plot_title = 'Proton temperature '
     y_label = 'Proton temperature (K)'
     data = np.load(precomp_path+'temp.npy')
-    ybounds = (0,1e6)
+    data_fit = np.load(precomp_path+'temp_fit.npy')
+    ybounds = (0,6e5)
 elif datamode == 'vr':
     plot_title = 'Radial proton velocity '
     y_label = 'Proton velocity (km/s)'
     data = np.load(precomp_path+'v_r.npy')
+    data_fit = np.load(precomp_path+'v_r_fit.npy')
     ybounds = (200,700)
 elif datamode == 'np':
     plot_title = 'Proton density '
     y_label = 'Proton density (cm^-3)'
     data = np.load(precomp_path+'n_p.npy')
+    data_fit = np.load(precomp_path+'n_p_fit.npy')
     ybounds = (0,600)
 elif datamode == 'b':
     plot_title = 'Magnetic field strength '
@@ -118,39 +170,66 @@ elif datamode == 'alfmach':
 if not os.path.exists(output_path):
     os.makedirs(output_path)
 
-if br_color:
-    if datamode == 'b':
-        #NOTE: fields data currently lacks quality flags
-        valid = np.where(abs(data) < dat_upperbnd)
-        b_r = np.load(precomp_path+'b_r.npy')[valid]
-        epoch_b = epoch_b[valid]
-    else:
-        valid = np.where(np.logical_and(abs(data) < dat_upperbnd,dqf_gen==0))
-        b_r_spc = np.load(precomp_path+'b_r_spc.npy')[valid]
-        epoch = epoch[valid]
-else:
-    valid = np.where(np.logical_and(abs(data) < dat_upperbnd,dqf_gen==0))
 
-data = data[valid]
+if datamode in {'temp','vr','np'}:
+    #Filter by agreement with the fits version of the data
+    percentdiff = abs((data_fit - data) / data)
+    if datamode == 'temp':
+        maxdiff = 1 - np.square(1-maxdiff)
+#         maxdiff = 0.2
+    valid = np.where(np.logical_and(percentdiff < maxdiff,np.logical_and(abs(data)<dat_upperbnd,dqf==0)))
+    data = (data[valid] + data_fit[valid])/2
+else:
+    valid = np.where(np.logical_and(abs(data)<dat_upperbnd,dqf==0))
+    data = data[valid]
 dist = dist[valid]
 carrlon = carrlon[valid]
 
-for transient in known_transients:
-    if datamode == 'b':
-        normal = np.where(np.logical_or(epoch_b < transient[0], epoch_b > transient[1]))
-        data = data[normal]
-        dist = dist[normal]
-        carrlon = carrlon[normal]
-        if br_color:
-            b_r = b_r[normal]
-    else:
-        normal = np.where(np.logical_or(epoch < transient[0], epoch > transient[1]))
-        data = data[normal]
-        dist = dist[normal]
-        carrlon = carrlon[normal]
-        if br_color:
-            b_r_spc = b_r_spc[normal]
+if approach_num == 2:
+    print(len(data))
+    dqf_fullscan = np.load(precomp_path+'dqf_fullscan.npy')[valid]
+    not_fullscan = np.where(dqf_fullscan==0)
+    data = data[not_fullscan]
+    dist = dist[not_fullscan]
+    carrlon = carrlon[not_fullscan]
+    print(len(data))
 
+if br_color:
+    if datamode == 'b':
+        #NOTE: fields data currently lacks quality flags
+#         valid = np.where(abs(data) < dat_upperbnd)
+        b_r = np.load(precomp_path+'b_r.npy')[valid]
+        epoch_b = epoch_b[valid]
+    else:
+#         valid = np.where(np.logical_and(abs(data) < dat_upperbnd,dqf_gen==0))
+        b_r_spc = np.load(precomp_path+'b_r_spc.npy')[valid]
+        epoch = epoch[valid]
+else:
+#     valid = np.where(np.logical_and(abs(data) < dat_upperbnd,dqf_gen==0))
+    epoch = epoch[valid]
+
+# data = data[valid]
+# dist = dist[valid]
+# carrlon = carrlon[valid]
+
+vars_tofilter = [data,dist,carrlon]
+
+if approach_num == 1:
+    if datamode == 'b':
+        if br_color:
+            vars_tofilter.append(b_r)
+            data, dist, carrlon, b_r = psplib.filter_known_transients(epoch_b, vars_tofilter)
+        else:
+            data, dist, carrlon = psplib.filter_known_transients(epoch_b, vars_tofilter)
+    else:
+        if br_color:
+            vars_tofilter.append(b_r_spc)
+            data, dist, carrlon, b_r_spc = psplib.filter_known_transients(epoch, vars_tofilter)
+        else:
+            data, dist, carrlon = psplib.filter_known_transients(epoch, vars_tofilter)
+
+
+    
 for angle in range(ang_start,ang_end,ang_res):
     fig = plt.figure(figsize=(12,9))
     ax = fig.add_subplot(111)
@@ -174,10 +253,14 @@ for angle in range(ang_start,ang_end,ang_res):
             scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=1,c=b_r_spc[ang_slice],cmap='bwr',vmin=-10,vmax=10)
             color_bar = fig.colorbar(scatter, ax=ax)
             color_bar.set_label('Radial magnetic field (nT)')
+    elif long_color:
+        scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=1,c=carrlon[ang_slice],cmap='gist_rainbow')
+        color_bar = fig.colorbar(scatter, ax=ax)
+        color_bar.set_label('Carrington Longitude')
     else:
-        ax.plot(dist[ang_slice],data[ang_slice],marker='.',ms=1,ls='')
+        scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=1)
     if outputmode == 'file':
-        fig.savefig(output_path+str(abs(angle)))
+        fig.savefig(output_path+datamode)
         plt.close(fig)
 
 if outputmode == 'show':

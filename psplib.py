@@ -13,6 +13,7 @@ from os import listdir
 # from bisect import insort
 import traces
 import pandas
+from pspconstants import *
 
 def unpack_vars(filename, varnamelist):
     "Loads variable arrays listed in varnamelist from filename into a list of arrays"
@@ -108,15 +109,15 @@ def uniform_cadence(signal,epoch,sampling_period):
     uniform = tseries.moving_average(sampling_period,pandas=True)
     return uniform
 
-def uniform_median_filter(signal,epoch,sampling_period,filter_window,output_epoch=None):
+def uniform_median_filter(signal,epoch,sampling_period,filter_window,output_epoch):
     """Converts signal array with corresponding epoch array into a median-filtered pandas Series, at a 
     constant cadence. Samples to sampling_period, the length of time between uniform cadence
     data, calculated by moving average. Filter_window is in number of array elements.
     output_epoch is the array of datetimes corresponding to the array to be output. If not
     specified, epoch is used.
     NOTE: If not given as a datetime.timedelta, sampling_period is treated as seconds."""
-    if output_epoch == None:
-        output_epoch = epoch
+#     if output_epoch == None:
+#         output_epoch = epoch
     tseries = traces.TimeSeries(zip(epoch,signal))
     uniform = tseries.moving_average(sampling_period,pandas=True)
     filtered = traces.TimeSeries(uniform.rolling(filter_window).median(center=True))
@@ -138,6 +139,17 @@ def resample_variable(signal, epoch):
     for i in range(0,len(epoch)):
         signal_out[i] = signal.get(epoch[i],'linear')
     return signal_out
+
+def filter_known_transients(epoch, unfiltered_vars):
+    filtered_vars = []
+    for unfiltered in unfiltered_vars:
+        curr_unfiltered = unfiltered
+        for transient in known_transients:
+            normal = np.where(np.logical_or(epoch < transient[0], epoch > transient[1]))
+            curr_unfiltered = curr_unfiltered[normal]
+        filtered_vars.append(curr_unfiltered)
+    return filtered_vars
+
 
 # time = np.append(np.linspace(0.0,2,600),np.linspace(2,4,200)) + np.random.normal(0,0.001,800)
 # val1 = np.cos(2*np.pi*time) 
