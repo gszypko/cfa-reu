@@ -3,15 +3,21 @@
 #Automates production of radial angular slice plots for different variables
 
 # foreach n ( "-43 -39" "-36 -29" "-26 -23" )
-foreach n ( "8 12" "-6 1" )
-    set filename=`echo $n | tr ' ' ',' | tr -d '-' `
-    ./angslice.py np $n --spiralcolor --spiralslice --filtered --tofile stream_candidates_spiral/$filename/
-    ./angslice.py temp $n --spiralcolor --spiralslice --filtered --tofile stream_candidates_spiral/$filename/
-    ./angslice.py vr $n --spiralcolor --spiralslice --filtered --tofile stream_candidates_spiral/$filename/
-    ./angslice.py np $n --spiralcolor --spiralslice --tofile stream_candidates_spiral/$filename/
-    ./angslice.py temp $n --spiralcolor --spiralslice --tofile stream_candidates_spiral/$filename/
-    ./angslice.py vr $n --spiralcolor --spiralslice --tofile stream_candidates_spiral/$filename/
-end
+# foreach n ( "8 12" "-6 1" )
+#     set filename=`echo $n | tr ' ' ',' | tr -d '-' `
+#     set foldername="stream_candidates_spiral_equatorrot"
+#     ./angslice.py np $n --spiralcolor --spiralslice --filtered --tofile $foldername/$filename/
+#     ./angslice.py temp $n --spiralcolor --spiralslice --filtered --tofile $foldername/$filename/
+#     ./angslice.py vr $n --spiralcolor --spiralslice --filtered --tofile $foldername/$filename/
+#     ./angslice.py np $n --spiralcolor --spiralslice --tofile $foldername/$filename/
+#     ./angslice.py temp $n --spiralcolor --spiralslice --tofile $foldername/$filename/
+#     ./angslice.py vr $n --spiralcolor --spiralslice --tofile $foldername/$filename/
+# end
+
+./angslice.py np -45 -20 --spiralcolor --spiralslice --filtered --tofile spiralcolor_test/approach1/
+./angslice.py temp -45 -20 --spiralcolor --spiralslice --filtered --tofile spiralcolor_test/approach1/
+# ./angslice.py np -10 15 --spiralcolor --spiralslice --filtered --tofile spiralcolor_test/approach2/
+# ./angslice.py temp -10 15 --spiralcolor --spiralslice --filtered --tofile spiralcolor_test/approach2/
 
 # ./angslice.py b 8 12 --longcolor --tofile stream_candidates/8,12/
 # ./angslice.py b -6 1 --longcolor --tofile stream_candidates/6,1/

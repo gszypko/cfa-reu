@@ -17,8 +17,10 @@ import sys
 
 #temp=temperature, vr=radial vel, np=density, b=magnetic field
 #beta=plasma beta, alf=alfven speed, alfmach=alfven mach number
-colormode = 'vr'
-# colormode = sys.argv[1]
+# colormode = 'vr'
+colormode = sys.argv[1]
+
+spiral_streamlines = False
 
 output_path = '/home/gszypko/Desktop/radial2/'
 if not os.path.exists(output_path):
@@ -30,18 +32,19 @@ mag_files = sorted(listdir(mag_path))
 fig = plt.figure(figsize=(12,9))
 ax = fig.add_subplot(111,projection='polar')
 
-ang_bin_vels = {}
-ang_bin_rads = {}
-streamline_outer_r = 0.2
-if approach_num == 1:
-    for i in range(-41,-23):
-        ang_bin_rads[i]=[0,0]
-        ang_bin_vels[i]=[0,0]
+if spiral_streamlines:
+    ang_bin_vels = {}
+    ang_bin_rads = {}
+    streamline_outer_r = 0.2
+    if approach_num == 1:
+        for i in range(-41,-23):
+            ang_bin_rads[i]=[0,0]
+            ang_bin_vels[i]=[0,0]
 
-if approach_num == 2:
-    for i in range(-6,12):
-        ang_bin_rads[i]=[0,0]
-        ang_bin_vels[i]=[0,0]
+    if approach_num == 2:
+        for i in range(-6,12):
+            ang_bin_rads[i]=[0,0]
+            ang_bin_vels[i]=[0,0]
 
 
 for i in range(0,len(file_names)):
@@ -119,15 +122,16 @@ for i in range(0,len(file_names)):
 #Uncomment for logarithmic color scaling
 #     plt.scatter(theta,radius,cmap='jet',c=color,s=300,norm=matplotlib.colors.LogNorm())
 #     plt.scatter(theta,radius,cmap='bwr',c=color,s=300,vmin=-20,vmax=20)
-    plt.scatter(theta,radius,cmap='jet',c=color,s=300)
+    plt.scatter(theta,radius,cmap='bwr',c=color,s=300,vmin=-5,vmax=5)
 
-    for i in range(0,len(color)):
-        ang_bin = round(theta[i]*180/np.pi)
-        if radius[i] < streamline_outer_r and ang_bin in ang_bin_vels:
-            ang_bin_vels[ang_bin][0] = (ang_bin_vels[ang_bin][0]*ang_bin_vels[ang_bin][1] + color[i])/(ang_bin_vels[ang_bin][1]+1)
-            ang_bin_vels[ang_bin][1] += 1
-            ang_bin_rads[ang_bin][0] = (ang_bin_rads[ang_bin][0]*ang_bin_rads[ang_bin][1] + radius[i])/(ang_bin_rads[ang_bin][1]+1)
-            ang_bin_rads[ang_bin][1] += 1
+    if spiral_streamlines:
+        for i in range(0,len(color)):
+            ang_bin = round(theta[i]*180/np.pi)
+            if radius[i] < streamline_outer_r and ang_bin in ang_bin_vels:
+                ang_bin_vels[ang_bin][0] = (ang_bin_vels[ang_bin][0]*ang_bin_vels[ang_bin][1] + color[i])/(ang_bin_vels[ang_bin][1]+1)
+                ang_bin_vels[ang_bin][1] += 1
+                ang_bin_rads[ang_bin][0] = (ang_bin_rads[ang_bin][0]*ang_bin_rads[ang_bin][1] + radius[i])/(ang_bin_rads[ang_bin][1]+1)
+                ang_bin_rads[ang_bin][1] += 1
 
 
 #     num_spirals = 2
@@ -142,16 +146,18 @@ for i in range(0,len(file_names)):
 #             w = 2.69e-6 #deg/s
 #             plt.plot(phi_0+w/u*(r_0-r),r,color='black')
 
-print(ang_bin_vels)
-print(ang_bin_rads)
-for ang_bin in ang_bin_vels:
-    r_0 = ang_bin_rads[ang_bin][0]
-    u = ang_bin_vels[ang_bin][0]/au_km
-    r = np.linspace(r_0,0.4,30)
-    w = 2.69e-6 #deg/s
-    plt.plot(ang_bin*np.pi/180+w/u*(r_0-r),r,color='black')
-    if ang_bin == max(ang_bin_vels.keys()):
-        plt.plot(ang_bin*np.pi/180+w/u*(r_0-r)+np.pi/180,r,color='black')
+if spiral_streamlines:
+    print(ang_bin_vels)
+    print(ang_bin_rads)
+    for ang_bin in ang_bin_vels:
+        r_0 = ang_bin_rads[ang_bin][0]
+        u = ang_bin_vels[ang_bin][0]/au_km
+        r = np.linspace(r_0,0.4,30)
+    #     w = 2.69e-6 #rad/s 27 day period
+        w = 1.7e-4*np.pi/180 #rad/s 24.7 day period
+        plt.plot(ang_bin*np.pi/180+w/u*(r_0-r),r,color='black')
+        if ang_bin == max(ang_bin_vels.keys()):
+            plt.plot(ang_bin*np.pi/180+w/u*(r_0-r)+np.pi/180,r,color='black')
 
 ax.set_rmax(0.4)
 if approach_num == 2:

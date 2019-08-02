@@ -111,59 +111,63 @@ if br_color:
     output_path = '/home/gszypko/Desktop/bcolor_filtered_plots/'+datamode+'/'
 
 if spiral_color:
-    ang_bin_vels = {}
-    ang_bin_rads = {}
-    streamline_outer_r = 0.2
-    spiral_lon_fillval = 500
-    if approach_num == 1:
-        for i in range(-41,-23):
-            ang_bin_rads[i]=[0,0]
-            ang_bin_vels[i]=[0,0]
+    try:
+        carrlon = np.load(precomp_path+"spiral_longitude.npy")
+    except:
+        ang_bin_vels = {}
+        ang_bin_rads = {}
+        streamline_outer_r = 0.2
+        spiral_lon_fillval = 500
+        if approach_num == 1:
+            for i in range(-41,-23):
+                ang_bin_rads[i]=[0,0]
+                ang_bin_vels[i]=[0,0]
 
-    if approach_num == 2:
-        for i in range(-6,12):
-            ang_bin_rads[i]=[0,0]
-            ang_bin_vels[i]=[0,0]
+        if approach_num == 2:
+            for i in range(-6,12):
+                ang_bin_rads[i]=[0,0]
+                ang_bin_vels[i]=[0,0]
     
-    color = np.load(precomp_path+'v_r_filtered.npy')
-    for i in range(0,len(carrlon)):
-        ang_bin = round(carrlon[i])
-        if dist[i] < streamline_outer_r and ang_bin in ang_bin_vels:
-            ang_bin_vels[ang_bin][0] = (ang_bin_vels[ang_bin][0]*ang_bin_vels[ang_bin][1] + color[i])/(ang_bin_vels[ang_bin][1]+1)
-            ang_bin_vels[ang_bin][1] += 1
-            ang_bin_rads[ang_bin][0] = (ang_bin_rads[ang_bin][0]*ang_bin_rads[ang_bin][1] + dist[i])/(ang_bin_rads[ang_bin][1]+1)
-            ang_bin_rads[ang_bin][1] += 1
+        color = np.load(precomp_path+'v_r_filtered.npy')
+        for i in range(0,len(carrlon)):
+            ang_bin = round(carrlon[i])
+            if dist[i] < streamline_outer_r and ang_bin in ang_bin_vels:
+                ang_bin_vels[ang_bin][0] = (ang_bin_vels[ang_bin][0]*ang_bin_vels[ang_bin][1] + color[i])/(ang_bin_vels[ang_bin][1]+1)
+                ang_bin_vels[ang_bin][1] += 1
+                ang_bin_rads[ang_bin][0] = (ang_bin_rads[ang_bin][0]*ang_bin_rads[ang_bin][1] + dist[i])/(ang_bin_rads[ang_bin][1]+1)
+                ang_bin_rads[ang_bin][1] += 1
 
-    ang_bin_rads[max(ang_bin_rads.keys())+1]=[ang_bin_rads[max(ang_bin_rads.keys())][0],ang_bin_rads[max(ang_bin_rads.keys())][1]]
-    ang_bin_vels[max(ang_bin_vels.keys())+1]=[ang_bin_vels[max(ang_bin_vels.keys())][0],ang_bin_vels[max(ang_bin_vels.keys())][1]]
+        ang_bin_rads[max(ang_bin_rads.keys())+1]=[ang_bin_rads[max(ang_bin_rads.keys())][0],ang_bin_rads[max(ang_bin_rads.keys())][1]]
+        ang_bin_vels[max(ang_bin_vels.keys())+1]=[ang_bin_vels[max(ang_bin_vels.keys())][0],ang_bin_vels[max(ang_bin_vels.keys())][1]]
     
-    print(ang_bin_rads.keys())
-    print(ang_bin_vels.keys())
-    spiral_lon = np.ones_like(carrlon)*spiral_lon_fillval
-    w = 1.54e-4 #deg/s
-    for i in range(0,len(carrlon)):
-        r = dist[i]
-        phi = carrlon[i]
-        print("r: "+str(r))
-        print("phi: "+str(phi))
-        prev_phi = min(ang_bin_rads.keys())
-#         print("sweaping (heh) through streams...")
-        for ang_bin in sorted(ang_bin_rads.keys()):
-#             print("ang_bin: "+str(ang_bin))
-            r_0 = ang_bin_rads[ang_bin][0]
-            u = ang_bin_vels[ang_bin][0]/au_km
-            this_phi = ang_bin+w/u*(r_0-r)
-            if this_phi > phi and prev_phi < phi:
-#                 print("this_phi: "+str(this_phi))
-#                 print("prev_phi: "+str(prev_phi))
-                spiral_lon[i]=((phi-prev_phi)*(ang_bin)+(this_phi-phi)*(ang_bin-1))/(this_phi-prev_phi)
-                print("spiral_lon: "+str(spiral_lon[i]))
-                break
-            else:
-#                 if ang_bin == max(ang_bin_rads.keys()):
-#                     spiral_lon[i] = phi
-                prev_phi = this_phi
-    carrlon = spiral_lon
+        print(ang_bin_rads.keys())
+        print(ang_bin_vels.keys())
+        spiral_lon = np.ones_like(carrlon)*spiral_lon_fillval
+        w = 1.54e-4 #deg/s
+        for i in range(0,len(carrlon)):
+            r = dist[i]
+            phi = carrlon[i]
+            print("r: "+str(r))
+            print("phi: "+str(phi))
+            prev_phi = min(ang_bin_rads.keys())
+    #         print("sweaping (heh) through streams...")
+            for ang_bin in sorted(ang_bin_rads.keys()):
+    #             print("ang_bin: "+str(ang_bin))
+                r_0 = ang_bin_rads[ang_bin][0]
+                u = ang_bin_vels[ang_bin][0]/au_km
+                this_phi = ang_bin+w/u*(r_0-r)
+                if this_phi > phi and prev_phi < phi:
+    #                 print("this_phi: "+str(this_phi))
+    #                 print("prev_phi: "+str(prev_phi))
+                    spiral_lon[i]=((phi-prev_phi)*(ang_bin)+(this_phi-phi)*(ang_bin-1))/(this_phi-prev_phi)
+                    print("spiral_lon: "+str(spiral_lon[i]))
+                    break
+                else:
+    #                 if ang_bin == max(ang_bin_rads.keys()):
+    #                     spiral_lon[i] = phi
+                    prev_phi = this_phi
+        np.save(precomp_path+"spiral_longitude",spiral_lon)
+        carrlon = spiral_lon
 
 #                         if datamode in {'vr','alfmach'}:
 #                             vp = psplib.multi_unpack_vars(path, ['vp_moment_RTN'])[0]
