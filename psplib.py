@@ -141,6 +141,8 @@ def resample_variable(signal, epoch):
     return signal_out
 
 def filter_known_transients(epoch, unfiltered_vars):
+    """Removes known transient periods from each variable array in unfiltered_vars based on
+    known_transients as defined in pspconstants.py"""
     filtered_vars = []
     for unfiltered in unfiltered_vars:
         curr_unfiltered = unfiltered
@@ -150,6 +152,39 @@ def filter_known_transients(epoch, unfiltered_vars):
         filtered_vars.append(curr_unfiltered)
     return filtered_vars
 
+def find_epoch_idx(epoch,latest_value):
+    for i in range(0,len(epoch)):
+        if epoch[i] > latest_value: return i-1
+    return len(epoch) - 1
+
+# modular_median_filter(mag_path, 'psp_fld_mag_rtn', 'psp_fld_mag_epoch', path, 'epoch', precomp_path, 'b_r')
+# def modular_median_filter(varpath, varname, varepochname, targetpath, targetepochname, fileoutpath, fileoutname, filter_time):
+def modular_median_filter(var_tofilter,var_epoch,target_epoch,filter_time,out_path,out_filename,num_files=16):
+    """Filters data and saves out file by file. Cuts down on memory usage."""
+    var_length = len(var_tofilter)
+    min_diff = get_min_diff(var_epoch)
+    filter_window = int(filter_time/min_diff + 2)
+    out_epoch_idxs = [0,0]
+    print("filter_window: "+str(filter_window))
+    for i in range(0,num_files):
+        print("Processing file "+str(i))
+        idx_bnds = (int(var_length*i/num_files),int(var_length*(i+1)/num_files))
+        if i == num_files - 1:
+            out_epoch_idxs[1] = len(target_epoch)
+        else:
+            out_epoch_idxs[1] = find_epoch_idx(target_epoch,var_epoch[idx_bnds[1]])
+        window_bnds = (max(0,idx_bnds[0]-int(filter_window/2)),min(len(var_tofilter)-1,idx_bnds[1]+int(filter_window/2)))
+        print("idx_bnds: "+str(idx_bnds))
+        print("window_bnds: "+str(window_bnds))
+        print("out_epoch_idxs: "+str(out_epoch_idxs))
+        this_filtered = uniform_median_filter(var_tofilter[window_bnds[0]:window_bnds[1]],\
+            var_epoch[window_bnds[0]:window_bnds[1]],min_diff,filter_window,target_epoch[out_epoch_idxs[0]:out_epoch_idxs[1]])
+        print("Filtering complete")
+#         filt_bnds = (idx_bnds[0]-window_bnds[0],idx_bnds[1]-window_bnds[0])
+#         print("filt_bnds: "+str(filt_bnds))
+        np.save(out_path+out_filename+str(i).zfill(3),this_filtered)
+        print("File saved")
+        out_epoch_idxs[0] = out_epoch_idxs[1]
 
 # time = np.append(np.linspace(0.0,2,600),np.linspace(2,4,200)) + np.random.normal(0,0.001,800)
 # val1 = np.cos(2*np.pi*time) 

@@ -16,9 +16,9 @@ import os
 import sys
 
 #temp=temperature, vr=radial vel, np=density, b=magnetic field
-#beta=plasma beta, alf=alfven speed, alfmach=alfven machn number
-# colormode = 'vr'
-colormode = sys.argv[1]
+#beta=plasma beta, alf=alfven speed, alfmach=alfven mach number
+colormode = 'vr'
+# colormode = sys.argv[1]
 
 output_path = '/home/gszypko/Desktop/radial2/'
 if not os.path.exists(output_path):
@@ -30,15 +30,29 @@ mag_files = sorted(listdir(mag_path))
 fig = plt.figure(figsize=(12,9))
 ax = fig.add_subplot(111,projection='polar')
 
+ang_bin_vels = {}
+ang_bin_rads = {}
+streamline_outer_r = 0.2
+if approach_num == 1:
+    for i in range(-41,-23):
+        ang_bin_rads[i]=[0,0]
+        ang_bin_vels[i]=[0,0]
+
+if approach_num == 2:
+    for i in range(-6,12):
+        ang_bin_rads[i]=[0,0]
+        ang_bin_vels[i]=[0,0]
+
+
 for i in range(0,len(file_names)):
 # for i in range(0,1):
     file_name = path + file_names[i]
     carrlon, carrlat, scpos = psplib.unpack_vars(file_name, ['carr_longitude','carr_latitude','sc_pos_HCI'])
 #     carrlon, carrlat, scpos = psplib.multi_unpack_vars(path, ['carr_longitude','carr_latitude','sc_pos_HCI'])
     dist = psplib.compute_magnitudes(scpos/au_km, True)
-    print(file_names[i])
-    print("r="+str(round(np.amin(dist),2))+" to "+str(round(np.amax(dist),2)))
-    print("theta="+str(round(np.amin(carrlon)+360,1))+" to "+str(round(np.amax(carrlon)+360,1))+'\n')
+#     print(file_names[i])
+#     print("r="+str(round(np.amin(dist),2))+" to "+str(round(np.amax(dist),2)))
+#     print("theta="+str(round(np.amin(carrlon)+360,1))+" to "+str(round(np.amax(carrlon)+360,1))+'\n')
 #     continue
     if colormode in {'vr','alfmach'}:
         vp = psplib.unpack_vars(file_name, ['vp_moment_RTN'])[0]
@@ -104,40 +118,76 @@ for i in range(0,len(file_names)):
 
 #Uncomment for logarithmic color scaling
 #     plt.scatter(theta,radius,cmap='jet',c=color,s=300,norm=matplotlib.colors.LogNorm())
-    plt.scatter(theta,radius,cmap='bwr',c=color,s=300,vmin=-20,vmax=20)
-#     plt.scatter(theta,radius,cmap='jet',c=color,s=300)
+#     plt.scatter(theta,radius,cmap='bwr',c=color,s=300,vmin=-20,vmax=20)
+    plt.scatter(theta,radius,cmap='jet',c=color,s=300)
+
+    for i in range(0,len(color)):
+        ang_bin = round(theta[i]*180/np.pi)
+        if radius[i] < streamline_outer_r and ang_bin in ang_bin_vels:
+            ang_bin_vels[ang_bin][0] = (ang_bin_vels[ang_bin][0]*ang_bin_vels[ang_bin][1] + color[i])/(ang_bin_vels[ang_bin][1]+1)
+            ang_bin_vels[ang_bin][1] += 1
+            ang_bin_rads[ang_bin][0] = (ang_bin_rads[ang_bin][0]*ang_bin_rads[ang_bin][1] + radius[i])/(ang_bin_rads[ang_bin][1]+1)
+            ang_bin_rads[ang_bin][1] += 1
+
+
+#     num_spirals = 2
+#     bin_size = len(color)//2
+#     for i in range(0,num_spirals):
+#         this_color = color[bin_size*i:bin_size*(i+1)]
+#         r_0 = np.average(radius[bin_size*i:bin_size*(i+1)])
+#         if r_0 < 0.25:
+#             phi_0 = np.average(theta[bin_size*i:bin_size*(i+1)])
+#             u = np.average(this_color)/au_km
+#             r = np.linspace(r_0,0.4,30)
+#             w = 2.69e-6 #deg/s
+#             plt.plot(phi_0+w/u*(r_0-r),r,color='black')
+
+print(ang_bin_vels)
+print(ang_bin_rads)
+for ang_bin in ang_bin_vels:
+    r_0 = ang_bin_rads[ang_bin][0]
+    u = ang_bin_vels[ang_bin][0]/au_km
+    r = np.linspace(r_0,0.4,30)
+    w = 2.69e-6 #deg/s
+    plt.plot(ang_bin*np.pi/180+w/u*(r_0-r),r,color='black')
+    if ang_bin == max(ang_bin_vels.keys()):
+        plt.plot(ang_bin*np.pi/180+w/u*(r_0-r)+np.pi/180,r,color='black')
 
 ax.set_rmax(0.4)
-ax.set_thetamin(-45)
-ax.set_thetamax(45)
-ax.set_theta_zero_location("SE")
+if approach_num == 2:
+    ax.set_thetamin(-45)
+    ax.set_thetamax(45)
+    ax.set_theta_zero_location("SE")
+else:
+    ax.set_thetamin(-90)
+    ax.set_thetamax(0)
 ax.set_rlabel_position(135-45/2)
 color_bar = plt.colorbar()
 
 if colormode == 'temp':
-    ax.set_title("Proton temperature in heliocentric corotating frame")
+    ax.set_title("Proton temperature in heliocentric corotating frame (Approach "+str(approach_num)+")")
     color_bar.set_label("Proton temperature (K)")
 elif colormode == 'vr':
-    ax.set_title("Radial particle velocity in heliocentric corotating frame (Approach 2)")
+    ax.set_title("Radial particle velocity in heliocentric corotating frame (Approach "+str(approach_num)+")")
     color_bar.set_label("Radial particle velocity (km/s)")
 elif colormode == 'np':
-    ax.set_title("Estimated proton density in heliocentric corotating frame")
+    ax.set_title("Estimated proton density in heliocentric corotating frame (Approach "+str(approach_num)+")")
     color_bar.set_label("Proton density (cm^-3)")
 elif colormode == 'b':
-    ax.set_title("Magnetic field strength (interpolated) in heliocentric corotating frame")
+    ax.set_title("Magnetic field strength (interpolated) in heliocentric corotating frame (Approach "+str(approach_num)+")")
     color_bar.set_label('Magnetic field magnitude (nT)')
 elif colormode == 'beta':
     ax.set_yscale('log')
-    ax.set_title("Plasma beta in heliocentric corotating frame")
+    ax.set_title("Plasma beta in heliocentric corotating frame (Approach "+str(approach_num)+")")
     color_bar.set_label("Plasma beta")
 elif colormode == 'alf':
-    ax.set_title("Alfven speed in heliocentric corotating frame")
+    ax.set_title("Alfven speed in heliocentric corotating frame (Approach "+str(approach_num)+")")
     color_bar.set_label("Alfven speed (km/s)")
 elif colormode == 'alfmach':
-    ax.set_title("Alfven Mach number in heliocentric corotating frame")
+    ax.set_title("Alfven Mach number in heliocentric corotating frame (Approach "+str(approach_num)+")")
     color_bar.set_label("Alfven Mach number")
 elif colormode == 'br':
-    ax.set_title("Radial magnetic field in heliocentric corotating frame")
+    ax.set_title("Radial magnetic field in heliocentric corotating frame (Approach "+str(approach_num)+")")
     color_bar.set_label("Radial magnetic field (nT)")
 
 # fig.savefig(output_path+colormode)
