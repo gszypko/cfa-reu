@@ -1,10 +1,10 @@
 # cfa-reu, a repository for processing and plotting PSP data
 ### by Greg Szypko
 
-##Acknowledgements
+## Acknowledgements
 This work was completed as part of the Smithsonian Astrophysical Observatory NSF-REU in solar physics during the summer of 2019, grant number AGS-1560313. None of this would have been possible without mentorship from Dr. Kristoff Paulson, Dr. Michael Stevens, Dr. Anthony Case, Dr. Kelly Korreck, and Dr. Tatiana Niembro Hernandez.
 
-##Overview of Workflow
+## Overview of Workflow
 * Define the path names you plan to use for different data files by modifying `pspconstants.py`:
   * `path` is where you are storing original SPC .cdf files
   *  `mag_path` is where you are storing original FIELDS magnetometer .cdf files
