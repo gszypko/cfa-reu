@@ -35,6 +35,8 @@ pointcolor.add_argument("--spiralcolor",action="store_true")
 
 parser.add_argument("--spiralslice",action="store_true")
 
+parser.add_argument("--boxcar",action="store_true")
+
 parser.add_argument("--tofile")
 
 parser.add_argument("--batch",type=int)
@@ -43,7 +45,7 @@ parser.add_argument("--fitsmargin",type=float)
 
 parser.add_argument("--filtered",action="store_true")
 
-parser.add_argument("datamode",help="data to be plotted on the y-axis",choices=["vr","np","temp","b","beta","alf","alfmach"])
+parser.add_argument("datamode",help="data to be plotted on the y-axis",choices=["vr","np","temp","b","beta","alf","alfmach","full"])
 parser.add_argument("startangle",type=int)
 parser.add_argument("endangle",type=int)
 
@@ -59,6 +61,7 @@ br_color = args.bcolor
 long_color = args.longcolor
 spiral_color = args.spiralcolor
 spiral_slice = args.spiralslice
+boxcar = args.boxcar
 
 if args.tofile:
     outputmode = 'file'
@@ -80,23 +83,6 @@ print(datamode)
 print(ang_start)
 print(ang_end)
 
-
-#temp=temperature, vr=radial vel, np=density, b=magnetic field
-#beta=plasma beta, alf=alfven speed, alfmach=alfven mach number
-# datamode = sys.argv[1]
-#show=display plots on screen
-#file=save plots to file directory
-# outputmode = 'file'
-# br_color = False
-
-# ang_start = -45 #degrees, heading of first bin to plot
-# ang_end = -20
-# ang_start = int(sys.argv[2]) #degrees, heading of first bin to plot
-# ang_end = int(sys.argv[3])
-
-# ang_res = ang_end - ang_start #degrees, size of angular bins to plot
-
-
 filter_radius = 30*60*1e9 #in nanoseconds
 
 carrlon, scpos = psplib.multi_unpack_vars(path, ['carr_longitude','sc_pos_HCI'])
@@ -105,12 +91,21 @@ epoch_ns = psplib.multi_unpack_vars(path, ['epoch'])[0]
 epoch = np.array([datetime_t0+datetime.timedelta(seconds=i/1e9) for i in epoch_ns])
 dqf = np.load(precomp_path+'dqf_gen.npy')
 
-# output_path = '/home/gszypko/Desktop/stream_candidates/'+str(int(abs(ang_start)))+','+str(int(abs(ang_end)))+'/'
-# output_path = '/home/gszypko/Desktop/stream_candidates/'
-if br_color:
-    output_path = '/home/gszypko/Desktop/bcolor_filtered_plots/'+datamode+'/'
+if boxcar:
+    if spiral_slice or spiral_color:
+        spiral_lon_fillval = 500
+        print("loading spiral boxcar longs")
+        carrlon = np.load(precomp_path+"boxcar/boxcar_spiral_longs.npy")
+    else:
+        print("loading normal boxcar longs")
+        carrlon = np.load(precomp_path+"boxcar/boxcar_longs.npy")
+    dist = np.load(precomp_path+"boxcar/boxcar_dists.npy")
+    epoch = np.load(precomp_path+"boxcar/boxcar_times.npy")
+    print(len(carrlon))
+    print(len(dist))
+    print(len(epoch))
 
-if spiral_color:
+if (spiral_color or spiral_slice) and not boxcar:
     try:
         carrlon = np.load(precomp_path+"spiral_longitude.npy")
     except:
@@ -190,7 +185,14 @@ if spiral_color:
 
 dqf_gen = np.load(precomp_path+'dqf_gen.npy')
 print("loading relevant variables")
-if datamode == 'temp':
+if boxcar:
+    precomp_path = precomp_path + "boxcar/"
+    filtered = True
+if datamode == 'full':
+    data_list = []
+    y_label_list = []
+    ybounds_list = []
+if datamode == 'temp' or datamode == 'full':
     plot_title = 'Proton temperature '
     y_label = 'Proton temperature (K)'
     if filtered:
@@ -201,34 +203,50 @@ if datamode == 'temp':
         data = np.load(precomp_path+'temp.npy')
         data_fit = np.load(precomp_path+'temp_fit.npy')
     ybounds = (0,6e5)
-elif datamode == 'vr':
+    if datamode == 'full':
+        data_list.append(data)
+        y_label_list.append(y_label)
+        ybounds_list.append(ybounds)
+if datamode == 'vr' or datamode == 'full':
     plot_title = 'Radial proton velocity '
     y_label = 'Proton velocity (km/s)'
     if filtered:
         print("filtered loading")
         data = np.load(precomp_path+'v_r_filtered.npy')
-        print(data)
     else:
         print("unfiltered loading")
         data = np.load(precomp_path+'v_r.npy')
         data_fit = np.load(precomp_path+'v_r_fit.npy')
     ybounds = (200,700)
-elif datamode == 'np':
+    if datamode == 'full':
+        data_list.append(data)
+        y_label_list.append(y_label)
+        ybounds_list.append(ybounds)
+if datamode == 'np' or datamode == 'full':
     plot_title = 'Proton density '
     y_label = 'Proton density (cm^-3)'
     if filtered:
         print("filtered loading")
         data = np.load(precomp_path+'n_p_filtered.npy')
+        print(len(data))
     else:
         print("unfiltered loading")
         data = np.load(precomp_path+'n_p.npy')
         data_fit = np.load(precomp_path+'n_p_fit.npy')
     ybounds = (0,600)
-elif datamode == 'b':
+    if datamode == 'full':
+        data_list.append(data)
+        y_label_list.append(y_label)
+        ybounds_list.append(ybounds)
+if datamode == 'b' or datamode == 'full':
     plot_title = 'Magnetic field strength '
     y_label = 'Field strength (nT)'
     data = np.load(precomp_path+'b_mag_spc.npy')
     ybounds = (0,120)
+    if datamode == 'full':
+        data_list.append(data)
+        y_label_list.append(y_label)
+        ybounds_list.append(ybounds)
 #     dist = psplib.time_lerp(epoch_b,epoch,dist)
 #     carrlon = psplib.time_lerp(epoch_b,epoch,carrlon)
 elif datamode == 'beta':
@@ -255,15 +273,13 @@ elif datamode == 'alfmach':
     alf = b_lerp*1e-9/np.sqrt(mp_kg*(n_p*1e6)*mu_0) * 1e-3 #in km/s
     v_r = np.load(precomp_path+'v_r.npy')
     data = v_r/alf
+    
 print("variable loading complete")
 
-print(data)
-
-if not os.path.exists(output_path):
+if outputmode == 'file' and not os.path.exists(output_path):
     os.makedirs(output_path)
 
-
-if datamode in {'temp','vr','np'} and not filtered:
+if datamode in {'temp','vr','np'} and not filtered and not boxcar:
     #Filter by agreement with the fits version of the data
     percentdiff = abs((data_fit - data) / data)
     if datamode == 'temp':
@@ -273,14 +289,17 @@ if datamode in {'temp','vr','np'} and not filtered:
     data = (data[valid] + data_fit[valid])/2
 else:
     if filtered:
-        valid = np.where(dqf==0)
+        valid = np.where(dist == dist)
     else:
         valid = np.where(np.logical_and(abs(data)<dat_upperbnd,dqf==0))
     data = data[valid]
 dist = dist[valid]
 carrlon = carrlon[valid]
 
-if approach_num == 2:
+# print(data)
+# print(dist)
+
+if approach_num == 2 and not boxcar:
     print(len(data))
     dqf_fullscan = np.load(precomp_path+'dqf_fullscan.npy')[valid]
     not_fullscan = np.where(dqf_fullscan==0)
@@ -309,7 +328,7 @@ else:
 
 vars_tofilter = [data,dist,carrlon]
 
-if approach_num == 1:
+if approach_num == 1 and not datamode == 'full':
 #     if datamode == 'b':
 #         if br_color:
 #             vars_tofilter.append(b_r)
@@ -323,49 +342,103 @@ if approach_num == 1:
     else:
         data, dist, carrlon = psplib.filter_known_transients(epoch, vars_tofilter)
 
-
 print("entering plotting subroutine")
+print(ybounds_list)
+print(y_label_list)
+print(data_list)
+if boxcar:
+    pointsize = 30
+else:
+    pointsize = 1
 for angle in range(ang_start,ang_end,ang_res):
-    fig = plt.figure(figsize=(12,9))
-    ax = fig.add_subplot(111)
-    ax.set_ylim(ybounds[0],ybounds[1])
-    ax.set_xlim(0.15,0.3)
-    if spiral_slice:
-        ax.set_title(plot_title+', Parker Spiral Longitude = '+str(angle)+' to '+str(angle+ang_res)+' deg')
+    if datamode == 'full':
+        axs = [None, None, None, None]
+        fig, (axs[0], axs[1], axs[2], axs[3]) = plt.subplots(4, 1, sharex=True,figsize=(8,14))
+#         fig, axs_array = plt.subplots(2, 2, figsize=(14,10))
+#         axs[0] = axs_array[0,0]
+#         axs[1] = axs_array[0,1]
+#         axs[2] = axs_array[1,0]
+#         axs[3] = axs_array[1,1]
+        for i in range(0,len(axs)):
+            axs[i].set_ylim(ybounds_list[i][0],ybounds_list[i][1])
+            axs[i].set_xlim(0.16,0.25)
+            axs[i].set_ylabel(y_label_list[i])
+#         axs[2].set_ylim(ybounds_list[2][0],300)
+#         axs[0].set_ylim(ybounds_list[0][0],300000)
+#         axs[1].set_ylim(ybounds_list[1][0],400)
+#         axs[2].set_ylim(ybounds_list[2][0],400)
+        fig.suptitle('Stream Candidate, Carrington Longitude = '+str(angle)+' to '+str(angle+ang_res)+' deg')
+        axs[3].set_xlabel('Radial distance (AU)')
+        axs[2].set_xlabel('Radial distance (AU)')
     else:
-        ax.set_title(plot_title+', Carrington Longitude = '+str(angle)+' to '+str(angle+ang_res)+' deg')
-    ang_slice = np.where(np.logical_and(np.greater(carrlon,angle),np.less(carrlon,angle+ang_res)))
-    ax.set_xlabel('Radial distance (AU)')
-    ax.set_ylabel(y_label)
+        fig = plt.figure(figsize=(12,9))
+        ax = fig.add_subplot(111)
+        ax.set_ylim(ybounds[0],ybounds[1])
+        ax.set_xlim(0.15,0.3)
+        ax.set_ylabel(y_label)
+        ax.set_xlabel('Radial distance (AU)')
+        if spiral_slice:
+            ax.set_title(plot_title+', Parker Spiral Longitude = '+str(angle)+' to '+str(angle+ang_res)+' deg')
+        else:
+            ax.set_title(plot_title+', Carrington Longitude = '+str(angle)+' to '+str(angle+ang_res)+' deg')
+    if spiral_color or spiral_slice:
+        ang_slice = np.where(np.logical_and(carrlon < spiral_lon_fillval-1,np.logical_and(np.greater(carrlon,angle),np.less(carrlon,angle+ang_res))))
+    else:
+        ang_slice = np.where(np.logical_and(np.greater(carrlon,angle),np.less(carrlon,angle+ang_res)))
+#     print(angle)
+#     print(ang_res)
+#     print(ang_slice)
     if datamode == 'beta':
         ax.set_yscale('log')
-#     print(b_r_spc[ang_slice].shape)
-#     print(data[ang_slice].shape)
-#     print(dist[ang_slice].shape)
     print("plotting")
-    if br_color:
-        if datamode == 'b':
-            scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=1,c=b_r[ang_slice],cmap='bwr',vmin=-10,vmax=10)
-            color_bar = fig.colorbar(scatter, ax=ax)
-            color_bar.set_label('Radial magnetic field (nT)')
-        else:
-            scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=1,c=b_r_spc[ang_slice],cmap='bwr',vmin=-10,vmax=10)
-            color_bar = fig.colorbar(scatter, ax=ax)
-            color_bar.set_label('Radial magnetic field (nT)')
-    elif long_color:
-        scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=1,c=carrlon[ang_slice],cmap='gist_rainbow')
-        color_bar = fig.colorbar(scatter, ax=ax)
-        color_bar.set_label('Carrington Longitude')
-    elif spiral_color:
-        if spiral_slice:
-            scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=1,c=carrlon[ang_slice],cmap='gist_rainbow')
-        else:
-            in_spiral = np.where(carrlon[ang_slice] < (spiral_lon_fillval - 1))
-            scatter = ax.scatter(dist[ang_slice][in_spiral],data[ang_slice][in_spiral],marker='.',s=1,c=carrlon[ang_slice][in_spiral],cmap='gist_rainbow')
-        color_bar = fig.colorbar(scatter, ax=ax)
-        color_bar.set_label('Spiral Longitude at Closest Approach')
+    if datamode == 'full':
+        for i in range(0,len(axs)):
+            ax = axs[i]
+            data = data_list[i]
+            if br_color:
+                if datamode == 'b':
+                    scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=pointsize,c=b_r[ang_slice],cmap='bwr',vmin=-10,vmax=10)
+                    color_bar = fig.colorbar(scatter, ax=ax)
+                    color_bar.set_label('Radial magnetic field (nT)')
+                else:
+                    scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=pointsize,c=b_r_spc[ang_slice],cmap='bwr',vmin=-10,vmax=10)
+                    color_bar = fig.colorbar(scatter, ax=ax)
+                    color_bar.set_label('Radial magnetic field (nT)')
+            elif long_color:
+                scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=pointsize,c=carrlon[ang_slice],cmap='gist_rainbow',zorder=1)
+                color_bar = fig.colorbar(scatter, ax=ax)
+                color_bar.set_label('Carrington Longitude')
+            elif spiral_color:
+                scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=pointsize,c=carrlon[ang_slice],cmap='gist_rainbow')
+                color_bar = fig.colorbar(scatter, ax=ax)
+                color_bar.set_label('Spiral Longitude at Closest Approach')
+            else:
+                scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=pointsize,c='black')
+            if boxcar:
+                ax.plot(dist[ang_slice],data[ang_slice],c='#e8e8e8',ls='-',zorder=-1)
     else:
-        scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=1)
+        if br_color:
+            if datamode == 'b':
+                scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=pointsize,c=b_r[ang_slice],cmap='bwr',vmin=-10,vmax=10)
+                color_bar = fig.colorbar(scatter, ax=ax)
+                color_bar.set_label('Radial magnetic field (nT)')
+            else:
+                scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=pointsize,c=b_r_spc[ang_slice],cmap='bwr',vmin=-10,vmax=10)
+                color_bar = fig.colorbar(scatter, ax=ax)
+                color_bar.set_label('Radial magnetic field (nT)')
+        elif long_color:
+            scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=pointsize,c=carrlon[ang_slice],cmap='gist_rainbow',zorder=1)
+            color_bar = fig.colorbar(scatter, ax=ax)
+            color_bar.set_label('Carrington Longitude')
+        elif spiral_color:
+            scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=pointsize,c=carrlon[ang_slice],cmap='gist_rainbow')
+            color_bar = fig.colorbar(scatter, ax=ax)
+            color_bar.set_label('Spiral Longitude at Closest Approach')
+        else:
+            scatter = ax.scatter(dist[ang_slice],data[ang_slice],marker='.',s=pointsize)
+        if boxcar:
+            ax.plot(dist[ang_slice],data[ang_slice],c='#e8e8e8',ls='-',zorder=-1)
+    
     if outputmode == 'file':
         if filtered:
             fig.savefig(output_path+datamode+'_filtered')

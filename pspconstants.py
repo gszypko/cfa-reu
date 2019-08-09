@@ -9,8 +9,6 @@ Defines physical constants as well as relevant path names for use in plotting sc
 import numpy as np
 import datetime
 
-approach_num = 2
-
 au_km = 1.496e8 #1 AU in kilometers
 
 mp_kg = 1.6726219e-27 #proton mass in kg
@@ -23,6 +21,7 @@ dat_upperbnd = 1e30
 # Datetime for noon on 1 Jan 2000
 datetime_t0 = datetime.datetime(2000,1,1,12,0,0)
 
+approach_num = 1
 # Path where relevant spc data is located
 path = '/data/reu/gszypko/data/approach'+str(approach_num)+'/'
 # Path where relevant fields data is located
